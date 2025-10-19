@@ -396,8 +396,8 @@ export default function TradingAdvanced() {
                               </div>
                             </td>
                             <td className="text-right font-mono px-2">
-                              <span className={funding >= 0 ? "text-green-400" : "text-red-400"}>
-                                {funding >= 0 ? "+" : ""}${funding.toFixed(2)}
+                              <span className={funding <= 0 ? "text-green-400" : "text-red-400"}>
+                                {funding > 0 ? "-" : funding < 0 ? "+" : ""}${Math.abs(funding).toFixed(2)}
                               </span>
                             </td>
                             <td className="text-center px-2">
