@@ -10,7 +10,7 @@ import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PYTHON_SCRIPT = path.join(__dirname, "hyperliquid.py");
+const PYTHON_SCRIPT = path.join(__dirname, "hyperliquid_api.py");
 const ACCOUNT_ADDRESS = process.env.HYPERLIQUID_ACCOUNT_ADDRESS || "";
 const API_SECRET = process.env.HYPERLIQUID_API_SECRET || "";
 const USE_TESTNET = process.env.HYPERLIQUID_TESTNET === "true";
