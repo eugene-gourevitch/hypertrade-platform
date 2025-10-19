@@ -44,19 +44,19 @@ export default function TradingAdvanced() {
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 2000, // Update every 2 seconds for real-time data
+    refetchInterval: 500, // Update every 500ms for true real-time data
   });
 
   // Fetch account data
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 2000, // Update every 2 seconds for real-time data
+      refetchInterval: 1000, // Update every 1 second for account data
     });
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 2000, // Update every 2 seconds for real-time data
+      refetchInterval: 1000, // Update every 1 second for orders
     });
 
   // Trading mutations
@@ -393,7 +393,14 @@ export default function TradingAdvanced() {
                         const positionValue = parseFloat(position.positionValue || "0");
                         
                         return (
-                          <tr key={idx} className="border-b border-border/50 hover:bg-accent/5">
+                          <tr 
+                            key={idx} 
+                            className="border-b border-border/50 hover:bg-accent/20 cursor-pointer transition-colors"
+                            onClick={() => {
+                              setSelectedCoin(position.coin);
+                              setPrice(mids?.[position.coin]?.toString() || "");
+                            }}
+                          >
                             <td className="py-3 px-2">
                               <div className="flex items-center gap-1">
                                 <span className="font-semibold">{position.coin}</span>
@@ -437,11 +444,33 @@ export default function TradingAdvanced() {
                               </span>
                             </td>
                             <td className="text-center px-2">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
+                              <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() => {
+                                    setSelectedCoin(position.coin);
+                                    setOrderType("limit");
+                                    setStopLossPrice("");
+                                    setTakeProfitPrice("");
+                                    toast.info(`Set TP/SL for ${position.coin} position`);
+                                  }}
+                                >
                                   Limit
                                 </Button>
-                                <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() => {
+                                    setSelectedCoin(position.coin);
+                                    setOrderType("market");
+                                    setSide(size > 0 ? "sell" : "buy");
+                                    setSize(Math.abs(size).toString());
+                                    toast.info(`Close ${position.coin} position at market`);
+                                  }}
+                                >
                                   Market
                                 </Button>
                               </div>
