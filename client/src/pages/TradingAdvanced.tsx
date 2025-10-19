@@ -193,6 +193,31 @@ export default function TradingAdvanced() {
     "0";
   const positions = userState?.assetPositions || [];
   
+  // Calculate account metrics
+  const totalMarginUsed = userState?.marginSummary?.totalMarginUsed || "0";
+  const totalNtlPos = userState?.marginSummary?.totalNtlPos || "0";
+  const withdrawable = userState?.withdrawable || "0";
+  
+  // Calculate unrealized PNL from positions
+  const totalUnrealizedPnl = positions.reduce((sum, pos) => {
+    return sum + parseFloat(pos.position?.unrealizedPnl || "0");
+  }, 0).toFixed(2);
+  
+  // Calculate risk metrics
+  const accountValueNum = parseFloat(accountValue);
+  const marginUsedNum = parseFloat(totalMarginUsed);
+  const crossMarginRatio = accountValueNum > 0 ? (marginUsedNum / accountValueNum) * 100 : 0;
+  const accountLeverage = marginUsedNum > 0 ? parseFloat(totalNtlPos) / accountValueNum : 0;
+  
+  // Calculate order summary metrics
+  const sizeNum = parseFloat(size || "0");
+  const priceNum = parseFloat(price || currentPrice);
+  const orderValue = sizeNum * priceNum;
+  const marginRequired = orderValue / leverage[0];
+  const estimatedLiqPrice = side === "buy" 
+    ? priceNum * (1 - 0.9 / leverage[0])
+    : priceNum * (1 + 0.9 / leverage[0]);
+  
   // Debug: Log user state
   console.log("User State:", userState);
   console.log("Account Value:", accountValue);
@@ -606,6 +631,114 @@ export default function TradingAdvanced() {
                 </div>
               )}
             </Card>
+
+            {/* Account Overview & Risk Metrics */}
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold mb-3">Account Overview</h3>
+              
+              {/* Account Equity */}
+              <div className="space-y-2 mb-4 pb-4 border-b border-border">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">Account Equity</div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Spot</span>
+                  <span className="font-mono">$8.49</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Perps</span>
+                  <span className="font-mono font-semibold">${parseFloat(accountValue).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Perps Overview - Risk Metrics */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">Perps Overview</div>
+                
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Balance</span>
+                  <span className="font-mono">${parseFloat(accountValue).toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Unrealized PNL</span>
+                  <span className={`font-mono font-semibold ${
+                    parseFloat(totalUnrealizedPnl) >= 0 ? "text-green-400" : "text-red-400"
+                  }`}>
+                    {parseFloat(totalUnrealizedPnl) >= 0 ? "+" : ""}${parseFloat(totalUnrealizedPnl).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Cross Margin Ratio</span>
+                  <span className={`font-mono font-semibold ${
+                    crossMarginRatio > 80 ? "text-red-400" : 
+                    crossMarginRatio > 50 ? "text-yellow-400" : "text-green-400"
+                  }`}>
+                    {crossMarginRatio.toFixed(2)}%
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Maintenance Margin</span>
+                  <span className="font-mono">${parseFloat(totalMarginUsed).toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Cross Account Leverage</span>
+                  <span className="font-mono text-cyan-400 font-semibold">{accountLeverage.toFixed(2)}x</span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Withdrawable</span>
+                  <span className="font-mono">${parseFloat(withdrawable).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button size="sm" variant="outline" className="text-xs border-cyan-500/30 text-cyan-400">
+                    Deposit
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs">
+                    Withdraw
+                  </Button>
+                </div>
+                <Button size="sm" variant="outline" className="w-full text-xs border-cyan-500/30 text-cyan-400">
+                  Perps ⇄ Spot
+                </Button>
+              </div>
+            </Card>
+
+            {/* Order Summary */}
+            {(size || price) && (
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold mb-3">Order Summary</h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Liquidation Price</span>
+                    <span className="font-mono text-orange-400">
+                      {estimatedLiqPrice > 0 ? `$${estimatedLiqPrice.toFixed(2)}` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Order Value</span>
+                    <span className="font-mono">
+                      {orderValue > 0 ? `$${orderValue.toFixed(2)}` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Margin Required</span>
+                    <span className="font-mono">
+                      {marginRequired > 0 ? `$${marginRequired.toFixed(2)}` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Fees</span>
+                    <span className="font-mono text-cyan-400">↔ 0.0432% / 0.0144%</span>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>
