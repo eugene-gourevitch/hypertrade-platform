@@ -328,15 +328,19 @@ export default function TradingAdvanced() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-2">Coin</th>
-                        <th className="text-right py-2">Size</th>
-                        <th className="text-right py-2">Entry</th>
-                        <th className="text-right py-2">Mark</th>
-                        <th className="text-right py-2">PnL</th>
-                        <th className="text-right py-2">ROE</th>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left py-2 px-2">Coin</th>
+                        <th className="text-right py-2 px-2">Size</th>
+                        <th className="text-right py-2 px-2">Position Value</th>
+                        <th className="text-right py-2 px-2">Entry Price</th>
+                        <th className="text-right py-2 px-2">Mark Price</th>
+                        <th className="text-right py-2 px-2">PNL (ROE %)</th>
+                        <th className="text-right py-2 px-2">Liq. Price</th>
+                        <th className="text-right py-2 px-2">Margin</th>
+                        <th className="text-right py-2 px-2">Funding</th>
+                        <th className="text-center py-2 px-2">TP/SL</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -345,31 +349,66 @@ export default function TradingAdvanced() {
                         const size = parseFloat(position.szi || "0");
                         const pnl = parseFloat(position.unrealizedPnl || "0");
                         const roe = parseFloat(position.returnOnEquity || "0") * 100;
+                        const leverage = position.leverage?.value || 1;
+                        const marginType = position.leverage?.type === "cross" ? "Cross" : "Isolated";
+                        const liquidationPx = parseFloat(position.liquidationPx || "0");
+                        const marginUsed = parseFloat((position as any).marginUsed || "0");
+                        const funding = parseFloat((position as any).cumFunding?.sinceOpen || "0");
+                        const positionValue = parseFloat(position.positionValue || "0");
+                        
                         return (
-                          <tr key={idx} className="border-b border-border/50">
-                            <td className="py-2 font-semibold">{position.coin}</td>
-                            <td className="text-right font-mono">
-                              {size > 0 ? "+" : ""}{size.toFixed(4)}
+                          <tr key={idx} className="border-b border-border/50 hover:bg-accent/5">
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-1">
+                                <span className="font-semibold">{position.coin}</span>
+                                <span className="text-xs text-cyan-400">{leverage}x</span>
+                              </div>
                             </td>
-                            <td className="text-right font-mono">
+                            <td className="text-right font-mono px-2">
+                              <span className={size > 0 ? "text-green-400" : "text-red-400"}>
+                                {size > 0 ? "+" : ""}{Math.abs(size).toFixed(4)}
+                              </span>
+                            </td>
+                            <td className="text-right font-mono px-2">
+                              ${positionValue.toFixed(2)}
+                            </td>
+                            <td className="text-right font-mono px-2">
                               ${parseFloat(position.entryPx || "0").toFixed(2)}
                             </td>
-                            <td className="text-right font-mono">
+                            <td className="text-right font-mono px-2">
                               ${parseFloat(mids?.[position.coin] || "0").toFixed(2)}
                             </td>
-                            <td
-                              className={`text-right font-mono ${
-                                pnl >= 0 ? "text-green-400" : "text-red-400"
-                              }`}
-                            >
-                              {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}
+                            <td className="text-right font-mono px-2">
+                              <div className={pnl >= 0 ? "text-green-400" : "text-red-400"}>
+                                <div>{pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}</div>
+                                <div className="text-[10px]">
+                                  ({roe >= 0 ? "+" : ""}{ roe.toFixed(2)}%)
+                                </div>
+                              </div>
                             </td>
-                            <td
-                              className={`text-right font-mono ${
-                                roe >= 0 ? "text-green-400" : "text-red-400"
-                              }`}
-                            >
-                              {roe >= 0 ? "+" : ""}{roe.toFixed(2)}%
+                            <td className="text-right font-mono px-2 text-orange-400">
+                              ${liquidationPx.toFixed(2)}
+                            </td>
+                            <td className="text-right px-2">
+                              <div className="text-xs">
+                                <div className="font-mono">${marginUsed.toFixed(2)}</div>
+                                <div className="text-[10px] text-muted-foreground">({marginType})</div>
+                              </div>
+                            </td>
+                            <td className="text-right font-mono px-2">
+                              <span className={funding >= 0 ? "text-green-400" : "text-red-400"}>
+                                {funding >= 0 ? "+" : ""}${funding.toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="text-center px-2">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
+                                  Limit
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]">
+                                  Market
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
