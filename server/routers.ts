@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as hyperliquid from "./hyperliquid";
+import * as hyperliquidPersistent from "./hyperliquid_persistent";
 import * as db from "./db";
 import { randomBytes } from "crypto";
 
@@ -24,7 +25,7 @@ export const appRouter = router({
   // Market data endpoints (public)
   market: router({
     getMeta: publicProcedure.query(async () => {
-      return await hyperliquid.getMeta();
+      return await hyperliquidPersistent.getMeta();
     }),
 
     getSpotMeta: publicProcedure.query(async () => {
@@ -32,13 +33,13 @@ export const appRouter = router({
     }),
 
     getAllMids: publicProcedure.query(async () => {
-      return await hyperliquid.getAllMids();
+      return await hyperliquidPersistent.getAllMids();
     }),
 
     getL2Snapshot: publicProcedure
       .input(z.object({ coin: z.string() }))
       .query(async ({ input }) => {
-        return await hyperliquid.getL2Snapshot(input.coin);
+        return await hyperliquidPersistent.getL2Snapshot(input.coin);
       }),
 
     getCandlesSnapshot: publicProcedure
@@ -63,11 +64,11 @@ export const appRouter = router({
   // Account endpoints (protected)
   account: router({
     getUserState: protectedProcedure.query(async ({ ctx }) => {
-      return await hyperliquid.getUserState();
+      return await hyperliquidPersistent.getUserState();
     }),
 
     getOpenOrders: protectedProcedure.query(async ({ ctx }) => {
-      return await hyperliquid.getOpenOrders();
+      return await hyperliquidPersistent.getOpenOrders();
     }),
 
     getUserFills: protectedProcedure.query(async ({ ctx }) => {
