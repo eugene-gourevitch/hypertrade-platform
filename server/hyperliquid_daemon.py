@@ -52,6 +52,14 @@ def handle_request(request: dict) -> dict:
             result = info_client.open_orders(address)
             return {"success": True, "data": result}
             
+        elif command == "get_candles":
+            coin = args.get("coin")
+            interval = args.get("interval", "1h")
+            start_time = args.get("startTime")
+            end_time = args.get("endTime")
+            result = info_client.candles_snapshot(coin, interval, int(start_time), int(end_time))
+            return {"success": True, "data": result}
+            
         else:
             return {"success": False, "error": f"Unknown command: {command}"}
             

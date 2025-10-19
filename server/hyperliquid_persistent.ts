@@ -159,3 +159,12 @@ export async function getOpenOrders(address?: string) {
   return daemon.request("get_open_orders", { address });
 }
 
+export async function getCandles(
+  coin: string,
+  interval: string,
+  startTime: number,
+  endTime: number
+) {
+  return daemon.request("get_candles", { coin, interval, startTime, endTime });
+}
+

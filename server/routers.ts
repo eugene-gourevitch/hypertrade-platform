@@ -52,11 +52,14 @@ export const appRouter = router({
         })
       )
       .query(async ({ input }) => {
-        return await hyperliquid.getCandlesSnapshot(
+        const now = Date.now();
+        const startTime = input.startTime || (now - 24 * 60 * 60 * 1000);
+        const endTime = input.endTime || now;
+        return await hyperliquidPersistent.getCandles(
           input.coin,
           input.interval,
-          input.startTime,
-          input.endTime
+          startTime,
+          endTime
         );
       }),
   }),

@@ -16,7 +16,7 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import TradingViewChart from "@/components/TradingViewChart";
+import HyperliquidChart from "@/components/HyperliquidChart";
 import { useWallet } from "@/hooks/useWallet";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -341,7 +341,7 @@ export default function TradingAdvanced() {
                 </div>
               </div>
               <div className="h-[500px]">
-                <TradingViewChart symbol={selectedCoin} theme="dark" />
+                <HyperliquidChart symbol={selectedCoin} theme="dark" />
               </div>
             </Card>
 
