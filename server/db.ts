@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, trades, userSettings, InsertTrade, InsertUserSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -85,4 +85,91 @@ export async function getUser(id: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Trading queries
+export async function saveTrade(trade: InsertTrade): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot save trade: database not available");
+    return;
+  }
+
+  try {
+    await db.insert(trades).values(trade);
+  } catch (error) {
+    console.error("[Database] Failed to save trade:", error);
+    throw error;
+  }
+}
+
+export async function getUserTrades(userId: string, limit: number = 100) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get trades: database not available");
+    return [];
+  }
+
+  const result = await db
+    .select()
+    .from(trades)
+    .where(eq(trades.userId, userId))
+    .orderBy(trades.createdAt)
+    .limit(limit);
+
+  return result;
+}
+
+export async function getUserSettings(userId: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get settings: database not available");
+    return undefined;
+  }
+
+  const result = await db
+    .select()
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertUserSettings(
+  settings: InsertUserSettings
+): Promise<void> {
+  if (!settings.userId) {
+    throw new Error("User ID is required for upsert");
+  }
+
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot upsert settings: database not available");
+    return;
+  }
+
+  try {
+    const updateSet: Record<string, unknown> = {};
+
+    if (settings.defaultLeverage !== undefined) {
+      updateSet.defaultLeverage = settings.defaultLeverage;
+    }
+    if (settings.defaultSlippage !== undefined) {
+      updateSet.defaultSlippage = settings.defaultSlippage;
+    }
+    if (settings.favoriteCoins !== undefined) {
+      updateSet.favoriteCoins = settings.favoriteCoins;
+    }
+    if (settings.theme !== undefined) {
+      updateSet.theme = settings.theme;
+    }
+
+    updateSet.updatedAt = new Date();
+
+    await db.insert(userSettings).values(settings).onDuplicateKeyUpdate({
+      set: updateSet,
+    });
+  } catch (error) {
+    console.error("[Database] Failed to upsert settings:", error);
+    throw error;
+  }
+}
