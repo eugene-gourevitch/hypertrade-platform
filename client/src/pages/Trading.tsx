@@ -161,12 +161,12 @@ export default function Trading() {
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/">
-              <a className="text-xl font-bold text-primary">HyperTrade</a>
+            <Link href="/" className="text-xl font-bold text-primary">
+              HyperTrade
             </Link>
             <nav className="flex gap-4">
-              <Link href="/trade">
-                <a className="text-sm font-medium hover:text-primary">Trade</a>
+              <Link href="/trade" className="text-sm font-medium hover:text-primary">
+                Trade
               </Link>
             </nav>
           </div>
