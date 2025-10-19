@@ -221,6 +221,68 @@ export const appRouter = router({
           input.isCross
         );
       }),
+
+    placeStopLoss: protectedProcedure
+      .input(
+        z.object({
+          coin: z.string(),
+          isBuy: z.boolean(),
+          size: z.number(),
+          triggerPrice: z.number(),
+          limitPrice: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquid.placeStopLossOrder(
+          input.coin,
+          input.isBuy,
+          input.size,
+          input.triggerPrice,
+          input.limitPrice
+        );
+      }),
+
+    placeTakeProfit: protectedProcedure
+      .input(
+        z.object({
+          coin: z.string(),
+          isBuy: z.boolean(),
+          size: z.number(),
+          triggerPrice: z.number(),
+          limitPrice: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquid.placeTakeProfitOrder(
+          input.coin,
+          input.isBuy,
+          input.size,
+          input.triggerPrice,
+          input.limitPrice
+        );
+      }),
+
+    placeBracketOrder: protectedProcedure
+      .input(
+        z.object({
+          coin: z.string(),
+          isBuy: z.boolean(),
+          size: z.number(),
+          entryPrice: z.number(),
+          stopLossPrice: z.number(),
+          takeProfitPrice: z.number(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquid.placeBracketOrder(
+          input.coin,
+          input.isBuy,
+          input.size,
+          input.entryPrice,
+          input.stopLossPrice,
+          input.takeProfitPrice
+        );
+      }),
   }),
 });
 

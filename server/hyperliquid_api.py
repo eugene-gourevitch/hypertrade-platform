@@ -214,6 +214,95 @@ def update_isolated_margin(coin: str, is_buy: bool, amount: float) -> Dict[str, 
     exchange = get_exchange_client()
     return exchange.update_isolated_margin(amount, coin, is_buy)
 
+def place_stop_loss_order(
+    coin: str,
+    is_buy: bool,
+    size: float,
+    trigger_price: float,
+    limit_price: Optional[float] = None
+) -> Dict[str, Any]:
+    """Place a stop loss order (trigger order)."""
+    exchange = get_exchange_client()
+    
+    # If no limit price specified, use trigger price with small slippage
+    if limit_price is None:
+        slippage = 0.01  # 1% slippage
+        limit_price = trigger_price * (1 + slippage) if is_buy else trigger_price * (1 - slippage)
+    
+    order_request = {
+        "a": get_asset_index(coin),
+        "b": is_buy,
+        "p": str(limit_price),
+        "s": str(size),
+        "r": True,  # reduce only for stop loss
+        "t": {
+            "trigger": {
+                "triggerPx": str(trigger_price),
+                "isMarket": False,
+                "tpsl": "sl"  # stop loss
+            }
+        },
+    }
+    
+    return exchange.order(order_request)
+
+def place_take_profit_order(
+    coin: str,
+    is_buy: bool,
+    size: float,
+    trigger_price: float,
+    limit_price: Optional[float] = None
+) -> Dict[str, Any]:
+    """Place a take profit order (trigger order)."""
+    exchange = get_exchange_client()
+    
+    # If no limit price specified, use trigger price with small slippage
+    if limit_price is None:
+        slippage = 0.01  # 1% slippage
+        limit_price = trigger_price * (1 - slippage) if is_buy else trigger_price * (1 + slippage)
+    
+    order_request = {
+        "a": get_asset_index(coin),
+        "b": is_buy,
+        "p": str(limit_price),
+        "s": str(size),
+        "r": True,  # reduce only for take profit
+        "t": {
+            "trigger": {
+                "triggerPx": str(trigger_price),
+                "isMarket": False,
+                "tpsl": "tp"  # take profit
+            }
+        },
+    }
+    
+    return exchange.order(order_request)
+
+def place_bracket_order(
+    coin: str,
+    is_buy: bool,
+    size: float,
+    entry_price: float,
+    stop_loss_price: float,
+    take_profit_price: float
+) -> Dict[str, Any]:
+    """Place a bracket order (entry + stop loss + take profit)."""
+    results = []
+    
+    # Place entry order
+    entry_result = place_limit_order(coin, is_buy, size, entry_price)
+    results.append({"type": "entry", "result": entry_result})
+    
+    # Place stop loss (opposite side, reduce only)
+    sl_result = place_stop_loss_order(coin, not is_buy, size, stop_loss_price)
+    results.append({"type": "stop_loss", "result": sl_result})
+    
+    # Place take profit (opposite side, reduce only)
+    tp_result = place_take_profit_order(coin, not is_buy, size, take_profit_price)
+    results.append({"type": "take_profit", "result": tp_result})
+    
+    return {"bracket_orders": results}
+
 # ============================================================================
 # Helper Functions
 # ============================================================================

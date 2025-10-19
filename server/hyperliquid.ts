@@ -279,6 +279,63 @@ export async function updateLeverage(
   );
 }
 
+export async function placeStopLossOrder(
+  coin: string,
+  isBuy: boolean,
+  size: number,
+  triggerPrice: number,
+  limitPrice?: number
+): Promise<any> {
+  const args = [
+    coin,
+    isBuy.toString(),
+    size.toString(),
+    triggerPrice.toString(),
+  ];
+  if (limitPrice !== undefined) {
+    args.push(limitPrice.toString());
+  }
+  return executePythonCommand("place_stop_loss_order", ...args);
+}
+
+export async function placeTakeProfitOrder(
+  coin: string,
+  isBuy: boolean,
+  size: number,
+  triggerPrice: number,
+  limitPrice?: number
+): Promise<any> {
+  const args = [
+    coin,
+    isBuy.toString(),
+    size.toString(),
+    triggerPrice.toString(),
+  ];
+  if (limitPrice !== undefined) {
+    args.push(limitPrice.toString());
+  }
+  return executePythonCommand("place_take_profit_order", ...args);
+}
+
+export async function placeBracketOrder(
+  coin: string,
+  isBuy: boolean,
+  size: number,
+  entryPrice: number,
+  stopLossPrice: number,
+  takeProfitPrice: number
+): Promise<any> {
+  return executePythonCommand(
+    "place_bracket_order",
+    coin,
+    isBuy.toString(),
+    size.toString(),
+    entryPrice.toString(),
+    stopLossPrice.toString(),
+    takeProfitPrice.toString()
+  );
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
