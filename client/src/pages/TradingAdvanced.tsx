@@ -41,19 +41,19 @@ export default function TradingAdvanced() {
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 1000, // Update every second
+    refetchInterval: 2000, // Update every 2 seconds (avoid rate limits)
   });
 
   // Fetch account data
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 1000, // Update every second
+      refetchInterval: 2500, // Update every 2.5 seconds (avoid rate limits)
     });
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 1000, // Update every second
+      refetchInterval: 3000, // Update every 3 seconds (avoid rate limits)
     });
 
   // Trading mutations

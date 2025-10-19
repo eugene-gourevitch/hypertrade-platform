@@ -16,6 +16,10 @@ ACCOUNT_ADDRESS = None
 API_SECRET = None
 API_URL = constants.MAINNET_API_URL
 
+# Singleton instances to avoid recreating clients
+_info_client = None
+_exchange_client = None
+
 def init_clients(account_address: str, api_secret: str, testnet: bool = False):
     """Initialize Hyperliquid clients."""
     global ACCOUNT_ADDRESS, API_SECRET, API_URL
@@ -24,14 +28,20 @@ def init_clients(account_address: str, api_secret: str, testnet: bool = False):
     API_URL = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
 
 def get_info_client() -> Info:
-    """Get Info client for read-only operations."""
-    return Info(API_URL, skip_ws=True)
+    """Get Info client for read-only operations (singleton)."""
+    global _info_client
+    if _info_client is None:
+        _info_client = Info(API_URL, skip_ws=True)
+    return _info_client
 
 def get_exchange_client() -> Exchange:
-    """Get Exchange client for trading operations."""
+    """Get Exchange client for trading operations (singleton)."""
+    global _exchange_client
     if not ACCOUNT_ADDRESS or not API_SECRET:
         raise ValueError("Account address and API secret must be initialized")
-    return Exchange(ACCOUNT_ADDRESS, API_SECRET, API_URL)
+    if _exchange_client is None:
+        _exchange_client = Exchange(ACCOUNT_ADDRESS, API_SECRET, API_URL)
+    return _exchange_client
 
 # ============================================================================
 # Account Information
@@ -41,6 +51,8 @@ def get_user_state(address: Optional[str] = None) -> Dict[str, Any]:
     """Get user account state including balances and positions."""
     info = get_info_client()
     addr = address or ACCOUNT_ADDRESS
+    if not addr:
+        raise ValueError("Account address must be provided or initialized")
     return info.user_state(addr)
 
 def get_open_orders(address: Optional[str] = None) -> List[Dict[str, Any]]:
