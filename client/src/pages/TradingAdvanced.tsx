@@ -21,6 +21,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { AccountSetupHelp } from "@/components/AccountSetupHelp";
+import { TransferDialog } from "@/components/TransferDialog";
 
 export default function TradingAdvanced() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -33,8 +34,9 @@ export default function TradingAdvanced() {
   const [price, setPrice] = useState("");
   const [stopLossPrice, setStopLossPrice] = useState("");
   const [takeProfitPrice, setTakeProfitPrice] = useState("");
-  const [leverage, setLeverage] = useState([5]);
-  const [isCross, setIsCross] = useState(true);
+  const [leverage, setLeverage] = useState([10]);
+  const [isIsolated, setIsIsolated] = useState(false);
+  const [marketType, setMarketType] = useState<"perps" | "spot">("perps");
 
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
@@ -179,7 +181,7 @@ export default function TradingAdvanced() {
     updateLeverageMutation.mutate({
       coin: selectedCoin,
       leverage: leverage[0],
-      isCross,
+      isCross: !isIsolated,
     });
   };
 
@@ -249,6 +251,7 @@ export default function TradingAdvanced() {
             {parseFloat(accountValue) === 0 && (
               <AccountSetupHelp />
             )}
+            <TransferDialog />
             {wallet.isMetaMaskInstalled && (
               <div>
                 {wallet.isConnected ? (
@@ -390,8 +393,8 @@ export default function TradingAdvanced() {
                     <Label htmlFor="cross-mode" className="text-xs">Cross</Label>
                     <Switch
                       id="cross-mode"
-                      checked={isCross}
-                      onCheckedChange={setIsCross}
+                      checked={!isIsolated}
+                      onCheckedChange={(checked) => setIsIsolated(!checked)}
                     />
                   </div>
                 </div>

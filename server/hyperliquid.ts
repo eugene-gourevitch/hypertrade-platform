@@ -337,6 +337,49 @@ export async function placeBracketOrder(
 }
 
 // ============================================================================
+// Transfer & Bridge Operations
+// ============================================================================
+
+export async function usdTransfer(
+  destination: string,
+  amount: number
+): Promise<any> {
+  return executePythonCommand(
+    "usd_transfer",
+    destination,
+    amount.toString()
+  );
+}
+
+export async function spotTransfer(
+  destination: string,
+  token: string,
+  amount: string
+): Promise<any> {
+  return executePythonCommand(
+    "spot_transfer",
+    destination,
+    token,
+    amount
+  );
+}
+
+export async function withdrawFromBridge(
+  destination: string,
+  amount: number
+): Promise<any> {
+  return executePythonCommand(
+    "withdraw_from_bridge",
+    destination,
+    amount.toString()
+  );
+}
+
+export async function getSpotBalances(): Promise<any> {
+  return executePythonCommand("get_spot_balances");
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 

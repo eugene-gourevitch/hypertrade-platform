@@ -284,6 +284,56 @@ export const appRouter = router({
         );
       }),
   }),
+
+  transfer: router({
+    usdTransfer: protectedProcedure
+      .input(
+        z.object({
+          destination: z.string(),
+          amount: z.number(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquid.usdTransfer(
+          input.destination,
+          input.amount
+        );
+      }),
+
+    spotTransfer: protectedProcedure
+      .input(
+        z.object({
+          destination: z.string(),
+          token: z.string(),
+          amount: z.string(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquid.spotTransfer(
+          input.destination,
+          input.token,
+          input.amount
+        );
+      }),
+
+    withdrawFromBridge: protectedProcedure
+      .input(
+        z.object({
+          destination: z.string(),
+          amount: z.number(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquid.withdrawFromBridge(
+          input.destination,
+          input.amount
+        );
+      }),
+
+    getSpotBalances: protectedProcedure.query(async ({ ctx }) => {
+      return await hyperliquid.getSpotBalances();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

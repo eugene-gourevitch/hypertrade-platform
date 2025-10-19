@@ -214,6 +214,32 @@ def update_isolated_margin(coin: str, is_buy: bool, amount: float) -> Dict[str, 
     exchange = get_exchange_client()
     return exchange.update_isolated_margin(amount, coin, is_buy)
 
+# ============================================================================
+# Transfer & Bridge Operations
+# ============================================================================
+
+def usd_transfer(destination: str, amount: float) -> Dict[str, Any]:
+    """Transfer USD between Hyperliquid accounts."""
+    exchange = get_exchange_client()
+    return exchange.usd_transfer(destination, amount)
+
+def spot_transfer(destination: str, token: str, amount: str) -> Dict[str, Any]:
+    """Transfer spot tokens between Hyperliquid accounts."""
+    exchange = get_exchange_client()
+    return exchange.spot_transfer(destination, token, amount)
+
+def withdraw_from_bridge(destination: str, amount: float) -> Dict[str, Any]:
+    """Withdraw USDC from Hyperliquid to EVM chain (Arbitrum)."""
+    exchange = get_exchange_client()
+    return exchange.withdraw_from_bridge(destination, amount)
+
+def get_spot_balances(address: Optional[str] = None) -> Dict[str, Any]:
+    """Get spot token balances."""
+    info = get_info_client()
+    addr = address or ACCOUNT_ADDRESS
+    user_state = info.user_state(addr)
+    return user_state.get("spotBalances", [])
+
 def place_stop_loss_order(
     coin: str,
     is_buy: bool,
