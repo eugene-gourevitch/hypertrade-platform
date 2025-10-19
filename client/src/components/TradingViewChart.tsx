@@ -37,7 +37,7 @@ function TradingViewChart({ symbol, theme = "dark" }: TradingViewChartProps) {
 
         new window.TradingView.widget({
           autosize: true,
-          symbol: `HYPERLIQUID:${symbol}USDC`,
+          symbol: `BINANCE:${symbol}USDT`,
           interval: "15",
           timezone: "Etc/UTC",
           theme: theme,

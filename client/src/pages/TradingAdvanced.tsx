@@ -20,6 +20,7 @@ import TradingViewChart from "@/components/TradingViewChart";
 import { useWallet } from "@/hooks/useWallet";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { AccountSetupHelp } from "@/components/AccountSetupHelp";
 
 export default function TradingAdvanced() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -189,6 +190,11 @@ export default function TradingAdvanced() {
     userState?.crossMarginSummary?.accountValue ||
     "0";
   const positions = userState?.assetPositions || [];
+  
+  // Debug: Log user state
+  console.log("User State:", userState);
+  console.log("Account Value:", accountValue);
+  console.log("Positions:", positions);
 
   if (loading) {
     return (
@@ -231,11 +237,18 @@ export default function TradingAdvanced() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-sm">
-              <span className="text-muted-foreground">Account: </span>
+              <span className="text-muted-foreground">Balance: </span>
               <span className="font-mono font-bold">
                 ${parseFloat(accountValue).toFixed(2)}
               </span>
+              {parseFloat(accountValue) === 0 && (
+                <span className="ml-2 text-xs text-yellow-500">⚠️ Empty
+                </span>
+              )}
             </div>
+            {parseFloat(accountValue) === 0 && (
+              <AccountSetupHelp />
+            )}
             {wallet.isMetaMaskInstalled && (
               <div>
                 {wallet.isConnected ? (
@@ -295,9 +308,21 @@ export default function TradingAdvanced() {
 
             {/* Positions */}
             <Card className="p-4">
-              <h3 className="text-lg font-semibold mb-4">Positions</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Positions</h3>
+                {parseFloat(accountValue) === 0 && (
+                  <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">
+                    ⚠️ Account has zero balance - deposit funds to start trading
+                  </span>
+                )}
+              </div>
               {positions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No open positions</p>
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-2">No open positions</p>
+                  {parseFloat(accountValue) > 0 && (
+                    <p className="text-xs text-muted-foreground">Place your first trade to see positions here</p>
+                  )}
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
