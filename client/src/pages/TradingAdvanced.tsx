@@ -22,6 +22,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { AccountSetupHelp } from "@/components/AccountSetupHelp";
 import { TransferDialog } from "@/components/TransferDialog";
+import { OrderBook } from "@/components/OrderBook";
 
 export default function TradingAdvanced() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -43,19 +44,19 @@ export default function TradingAdvanced() {
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 2000, // Update every 2 seconds (avoid rate limits)
+    refetchInterval: 5000, // Update every 5 seconds (avoid rate limits)
   });
 
   // Fetch account data
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 2500, // Update every 2.5 seconds (avoid rate limits)
+      refetchInterval: 5000, // Update every 5 seconds (avoid rate limits)
     });
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 3000, // Update every 3 seconds (avoid rate limits)
+      refetchInterval: 5000, // Update every 5 seconds (avoid rate limits)
     });
 
   // Trading mutations
@@ -312,7 +313,7 @@ export default function TradingAdvanced() {
 
       {/* Main Trading Interface */}
       <div className="container mx-auto p-4">
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-16 gap-4">
           {/* Left: Chart */}
           <div className="col-span-9">
             <Card className="p-4 mb-4">
@@ -455,8 +456,13 @@ export default function TradingAdvanced() {
             </Card>
           </div>
 
+          {/* Middle: Order Book */}
+          <div className="col-span-3">
+            <OrderBook coin={selectedCoin} />
+          </div>
+
           {/* Right: Order Entry & Controls */}
-          <div className="col-span-3 space-y-4">
+          <div className="col-span-4 space-y-4">
             {/* Leverage Control */}
             <Card className="p-4">
               <h3 className="text-sm font-semibold mb-3">Leverage</h3>
