@@ -41,19 +41,19 @@ export default function TradingAdvanced() {
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 2000,
+    refetchInterval: 1000, // Update every second
   });
 
   // Fetch account data
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 3000,
+      refetchInterval: 1000, // Update every second
     });
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 2000,
+      refetchInterval: 1000, // Update every second
     });
 
   // Trading mutations
@@ -323,9 +323,13 @@ export default function TradingAdvanced() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="flex-1">
+                <div className="flex-1 flex items-center gap-3">
                   <div className="text-3xl font-bold font-mono">
                     ${parseFloat(currentPrice).toFixed(2)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-500">LIVE</span>
                   </div>
                 </div>
               </div>
