@@ -15,8 +15,16 @@ import { ArrowRightLeft, ArrowUpRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
-export function TransferDialog() {
-  const [open, setOpen] = useState(false);
+interface TransferDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultTab?: "usd" | "spot" | "bridge";
+}
+
+export function TransferDialog({ open: controlledOpen, onOpenChange, defaultTab = "usd" }: TransferDialogProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [destination, setDestination] = useState("");
   const [amount, setAmount] = useState("");
 
@@ -78,7 +86,7 @@ export function TransferDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="transfer" className="mt-4">
+        <Tabs defaultValue={defaultTab === "bridge" ? "bridge" : "transfer"} className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="transfer">Internal Transfer</TabsTrigger>
             <TabsTrigger value="bridge">Bridge to EVM</TabsTrigger>

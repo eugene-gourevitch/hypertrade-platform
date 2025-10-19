@@ -37,6 +37,8 @@ export default function TradingAdvanced() {
   const [leverage, setLeverage] = useState([10]);
   const [isIsolated, setIsIsolated] = useState(false);
   const [marketType, setMarketType] = useState<"perps" | "spot">("perps");
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [transferDialogTab, setTransferDialogTab] = useState<"usd" | "spot" | "bridge">("bridge");
 
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
@@ -276,7 +278,11 @@ export default function TradingAdvanced() {
             {parseFloat(accountValue) === 0 && (
               <AccountSetupHelp />
             )}
-            <TransferDialog />
+            <TransferDialog 
+              open={showTransferDialog}
+              onOpenChange={setShowTransferDialog}
+              defaultTab={transferDialogTab}
+            />
             {wallet.isMetaMaskInstalled && (
               <div>
                 {wallet.isConnected ? (
@@ -700,14 +706,38 @@ export default function TradingAdvanced() {
               {/* Action Buttons */}
               <div className="mt-4 pt-4 border-t border-border space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <Button size="sm" variant="outline" className="text-xs border-cyan-500/30 text-cyan-400">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs border-cyan-500/30 text-cyan-400"
+                    onClick={() => {
+                      setTransferDialogTab("bridge");
+                      setShowTransferDialog(true);
+                    }}
+                  >
                     Deposit
                   </Button>
-                  <Button size="sm" variant="outline" className="text-xs">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={() => {
+                      setTransferDialogTab("bridge");
+                      setShowTransferDialog(true);
+                    }}
+                  >
                     Withdraw
                   </Button>
                 </div>
-                <Button size="sm" variant="outline" className="w-full text-xs border-cyan-500/30 text-cyan-400">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full text-xs border-cyan-500/30 text-cyan-400"
+                  onClick={() => {
+                    setTransferDialogTab("usd");
+                    setShowTransferDialog(true);
+                  }}
+                >
                   Perps ⇄ Spot
                 </Button>
               </div>
