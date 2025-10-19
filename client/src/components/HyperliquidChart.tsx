@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from "react";
-import { createChart, ColorType, IChartApi, ISeriesApi } from "lightweight-charts";
+import { createChart, ColorType } from "lightweight-charts";
 import { trpc } from "@/lib/trpc";
 
 interface HyperliquidChartProps {
@@ -18,9 +18,9 @@ const INTERVAL_OPTIONS = [
 
 function HyperliquidChart({ symbol, theme = "dark" }: HyperliquidChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const chartRef = useRef<any>(null);
+  const candleSeriesRef = useRef<any>(null);
+  const volumeSeriesRef = useRef<any>(null);
   const intervalRef = useRef<string>("1h");
 
   const { data: candles, refetch } = trpc.market.getCandlesSnapshot.useQuery(
@@ -63,7 +63,8 @@ function HyperliquidChart({ symbol, theme = "dark" }: HyperliquidChartProps) {
     chartRef.current = chart;
 
     // Add candlestick series
-    const candleSeries = chart.addCandlestickSeries({
+    const candleSeries = chart.addSeries({
+      type: "Candlestick",
       upColor: "#26a69a",
       downColor: "#ef5350",
       borderVisible: false,
@@ -73,7 +74,8 @@ function HyperliquidChart({ symbol, theme = "dark" }: HyperliquidChartProps) {
     candleSeriesRef.current = candleSeries;
 
     // Add volume series
-    const volumeSeries = chart.addHistogramSeries({
+    const volumeSeries = chart.addSeries({
+      type: "Histogram",
       color: "#26a69a",
       priceFormat: {
         type: "volume",
