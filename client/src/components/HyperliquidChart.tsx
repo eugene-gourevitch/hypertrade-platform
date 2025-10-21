@@ -1,171 +1,77 @@
 import { useEffect, useRef, memo } from "react";
-import { createChart, ColorType } from "lightweight-charts";
-import { trpc } from "@/lib/trpc";
 
 interface HyperliquidChartProps {
   symbol: string;
-  theme?: "light" | "dark";
+  interval: string;
 }
 
-const INTERVAL_OPTIONS = [
-  { label: "1m", value: "1m" },
-  { label: "5m", value: "5m" },
-  { label: "15m", value: "15m" },
-  { label: "1h", value: "1h" },
-  { label: "4h", value: "4h" },
-  { label: "1d", value: "1d" },
-];
+function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
+  const container = useRef<HTMLDivElement>(null);
 
-function HyperliquidChart({ symbol, theme = "dark" }: HyperliquidChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<any>(null);
-  const candleSeriesRef = useRef<any>(null);
-  const volumeSeriesRef = useRef<any>(null);
-  const intervalRef = useRef<string>("1h");
-
-  const { data: candles, refetch } = trpc.market.getCandlesSnapshot.useQuery(
-    {
-      coin: symbol,
-      interval: intervalRef.current,
-      startTime: Date.now() - 24 * 60 * 60 * 1000, // Last 24 hours
-      endTime: Date.now(),
-    },
-    {
-      refetchInterval: 5000, // Update every 5 seconds
-      enabled: !!symbol,
-    }
-  );
-
-  // Initialize chart
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!container.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: theme === "dark" ? "#0f1419" : "#ffffff" },
-        textColor: theme === "dark" ? "#d1d4dc" : "#191919",
-      },
-      grid: {
-        vertLines: { color: theme === "dark" ? "#1e222d" : "#e1e3eb" },
-        horzLines: { color: theme === "dark" ? "#1e222d" : "#e1e3eb" },
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: 500,
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      crosshair: {
-        mode: 1,
-      },
-    });
+    // Map Hyperliquid symbols to Binance symbols for TradingView
+    const symbolMap: Record<string, string> = {
+      "BTC": "BTCUSDT",
+      "ETH": "ETHUSDT",
+      "SOL": "SOLUSDT",
+      "HYPE": "BTCUSDT", // Fallback to BTC for tokens not on Binance
+      "ASTER": "BTCUSDT",
+    };
 
-    chartRef.current = chart;
+    const tvSymbol = symbolMap[symbol] || "BTCUSDT";
 
-    // Add candlestick series
-    const candleSeries = chart.addSeries({
-      type: "Candlestick",
-      upColor: "#26a69a",
-      downColor: "#ef5350",
-      borderVisible: false,
-      wickUpColor: "#26a69a",
-      wickDownColor: "#ef5350",
-    });
-    candleSeriesRef.current = candleSeries;
-
-    // Add volume series
-    const volumeSeries = chart.addSeries({
-      type: "Histogram",
-      color: "#26a69a",
-      priceFormat: {
-        type: "volume",
-      },
-      priceScaleId: "",
-    });
-    volumeSeriesRef.current = volumeSeries;
-
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => {
+      if (typeof window.TradingView !== "undefined") {
+        new window.TradingView.widget({
+          autosize: true,
+          symbol: `BINANCE:${tvSymbol}`,
+          interval: interval,
+          timezone: "Etc/UTC",
+          theme: "dark",
+          style: "1",
+          locale: "en",
+          toolbar_bg: "#0a0a0a",
+          enable_publishing: false,
+          hide_top_toolbar: false,
+          hide_legend: false,
+          save_image: false,
+          container_id: container.current!.id,
+          studies: ["Volume@tv-basicstudies"],
         });
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    document.head.appendChild(script);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.remove();
-    };
-  }, [theme]);
-
-  // Update chart data
-  useEffect(() => {
-    if (!candles || !candleSeriesRef.current || !volumeSeriesRef.current) return;
-
-    try {
-      const candleData = candles.map((c: any) => ({
-        time: Math.floor(c.t / 1000) as any, // Convert to seconds
-        open: parseFloat(c.o),
-        high: parseFloat(c.h),
-        low: parseFloat(c.l),
-        close: parseFloat(c.c),
-      }));
-
-      const volumeData = candles.map((c: any) => ({
-        time: Math.floor(c.t / 1000) as any,
-        value: parseFloat(c.v),
-        color: parseFloat(c.c) >= parseFloat(c.o) ? "#26a69a80" : "#ef535080",
-      }));
-
-      candleSeriesRef.current.setData(candleData);
-      volumeSeriesRef.current.setData(volumeData);
-
-      // Fit content
-      if (chartRef.current) {
-        chartRef.current.timeScale().fitContent();
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
       }
-    } catch (error) {
-      console.error("[HyperliquidChart] Error updating chart:", error);
-    }
-  }, [candles]);
-
-  const changeInterval = (newInterval: string) => {
-    intervalRef.current = newInterval;
-    refetch();
-  };
+    };
+  }, [symbol, interval]);
 
   return (
     <div className="relative w-full h-full">
-      {/* Interval selector */}
-      <div className="absolute top-2 left-2 z-10 flex gap-1 bg-background/80 backdrop-blur-sm rounded p-1">
-        {INTERVAL_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => changeInterval(option.value)}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              intervalRef.current === option.value
-                ? "bg-cyan-500 text-white"
-                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Chart container */}
-      <div ref={chartContainerRef} className="w-full h-full" />
-
-      {/* Data source indicator */}
-      <div className="absolute bottom-2 right-2 text-[10px] text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded">
-        Hyperliquid Live Data
-      </div>
+      <div
+        id={`tradingview_${symbol}_${interval}`}
+        ref={container}
+        className="w-full h-full"
+      />
     </div>
   );
 }
 
 export default memo(HyperliquidChart);
+
+// Extend Window interface for TradingView
+declare global {
+  interface Window {
+    TradingView: any;
+  }
+}
 

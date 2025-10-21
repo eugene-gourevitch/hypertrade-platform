@@ -62,6 +62,8 @@ export const appRouter = router({
           endTime
         );
       }),
+
+
   }),
 
   // Account endpoints (protected)
@@ -197,17 +199,28 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        return await hyperliquid.cancelOrder(input.coin, input.oid);
+        return await hyperliquidPersistent.cancelOrder(input.coin, input.oid);
       }),
 
     cancelAllOrders: protectedProcedure
       .input(
         z.object({
-          coin: z.string().optional(),
+          coin: z.string(),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        return await hyperliquid.cancelAllOrders(input.coin);
+        return await hyperliquidPersistent.cancelAllOrders(input.coin);
+      }),
+
+    closePosition: protectedProcedure
+      .input(
+        z.object({
+          coin: z.string(),
+          size: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await hyperliquidPersistent.closePosition(input.coin, input.size);
       }),
 
     updateLeverage: protectedProcedure

@@ -23,6 +23,8 @@ import { Switch } from "@/components/ui/switch";
 import { AccountSetupHelp } from "@/components/AccountSetupHelp";
 import { TransferDialog } from "@/components/TransferDialog";
 import { OrderBook } from "@/components/OrderBook";
+import LiveTrades from "@/components/LiveTrades";
+import { LiquidationWarning } from "@/components/LiquidationWarning";
 
 export default function TradingAdvanced() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -130,6 +132,15 @@ export default function TradingAdvanced() {
     onError: (error) => toast.error(`Cancel failed: ${error.message}`),
   });
 
+  const closePosition = trpc.trading.closePosition.useMutation({
+    onSuccess: () => {
+      toast.success("Position closed");
+      refetchUserState();
+      refetchOpenOrders();
+    },
+    onError: (error) => toast.error(`Failed to close position: ${error.message}`),
+  });
+
   const handlePlaceOrder = () => {
     if (!size || parseFloat(size) <= 0) {
       toast.error("Please enter a valid size");
@@ -189,7 +200,7 @@ export default function TradingAdvanced() {
   };
 
   const currentPrice = mids?.[selectedCoin] || "0";
-  const coins = meta?.universe?.map((asset) => asset.name) || [];
+  const coins = meta?.universe?.map((asset: any) => asset.name) || [];
   const accountValue =
     userState?.marginSummary?.accountValue ||
     userState?.crossMarginSummary?.accountValue ||
@@ -202,7 +213,7 @@ export default function TradingAdvanced() {
   const withdrawable = userState?.withdrawable || "0";
   
   // Calculate unrealized PNL from positions
-  const totalUnrealizedPnl = positions.reduce((sum, pos) => {
+  const totalUnrealizedPnl = positions.reduce((sum: number, pos: any) => {
     return sum + parseFloat(pos.position?.unrealizedPnl || "0");
   }, 0).toFixed(2);
   
@@ -323,7 +334,7 @@ export default function TradingAdvanced() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {coins.map((coin) => (
+                    {coins.map((coin: string) => (
                       <SelectItem key={coin} value={coin}>
                         {coin}/USDC
                       </SelectItem>
@@ -355,6 +366,9 @@ export default function TradingAdvanced() {
                   </span>
                 )}
               </div>
+              {positions.length > 0 && mids && (
+                <LiquidationWarning positions={positions} mids={mids} />
+              )}
               {positions.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-sm text-muted-foreground mb-2">No open positions</p>
@@ -380,7 +394,7 @@ export default function TradingAdvanced() {
                       </tr>
                     </thead>
                     <tbody>
-                      {positions.map((pos, idx) => {
+                      {positions.map((pos: any, idx: number) => {
                         const position = pos.position;
                         const size = parseFloat(position.szi || "0");
                         const pnl = parseFloat(position.unrealizedPnl || "0");
@@ -447,31 +461,16 @@ export default function TradingAdvanced() {
                               <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 <Button 
                                   size="sm" 
-                                  variant="outline" 
+                                  variant="destructive" 
                                   className="h-6 px-2 text-[10px]"
                                   onClick={() => {
-                                    setSelectedCoin(position.coin);
-                                    setOrderType("limit");
-                                    setStopLossPrice("");
-                                    setTakeProfitPrice("");
-                                    toast.info(`Set TP/SL for ${position.coin} position`);
+                                    if (confirm(`Close ${position.coin} position (${Math.abs(size).toFixed(4)})?`)) {
+                                      closePosition.mutate({ coin: position.coin });
+                                    }
                                   }}
+                                  disabled={closePosition.isPending}
                                 >
-                                  Limit
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-6 px-2 text-[10px]"
-                                  onClick={() => {
-                                    setSelectedCoin(position.coin);
-                                    setOrderType("market");
-                                    setSide(size > 0 ? "sell" : "buy");
-                                    setSize(Math.abs(size).toString());
-                                    toast.info(`Close ${position.coin} position at market`);
-                                  }}
-                                >
-                                  Market
+                                  {closePosition.isPending ? "Closing..." : "Close"}
                                 </Button>
                               </div>
                             </td>
@@ -485,9 +484,10 @@ export default function TradingAdvanced() {
             </Card>
           </div>
 
-          {/* Middle: Order Book */}
-          <div className="col-span-3">
-            <OrderBook coin={selectedCoin} />
+          {/* Middle: Order Book & Live Trades */}
+          <div className="col-span-3 space-y-4">
+            <OrderBook coin={selectedCoin} className="h-[400px]" />
+            <LiveTrades symbol={selectedCoin} className="h-[400px]" />
           </div>
 
           {/* Right: Order Entry & Controls */}
@@ -639,7 +639,7 @@ export default function TradingAdvanced() {
                 <p className="text-xs text-muted-foreground">No open orders</p>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {openOrders.map((order) => (
+                  {openOrders.map((order: any) => (
                     <div
                       key={order.oid}
                       className="p-2 bg-muted/30 rounded text-xs"

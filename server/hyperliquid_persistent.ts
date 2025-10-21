@@ -24,15 +24,30 @@ class HyperliquidDaemon {
   }> = [];
 
   async start() {
-    if (this.process) {
-      return; // Already started
+    if (this.process && this.ready) {
+      console.log("[Hyperliquid Daemon] Already started and ready");
+      return; // Already started and ready
+    }
+    
+    if (this.process && !this.ready) {
+      console.log("[Hyperliquid Daemon] Process exists but not ready, restarting...");
+      this.process.kill();
+      this.process = null;
+      this.rl = null;
     }
 
+    console.log("[Hyperliquid Daemon] Starting...");
     const ACCOUNT_ADDRESS = process.env.HYPERLIQUID_ACCOUNT_ADDRESS || "";
     const API_SECRET = process.env.HYPERLIQUID_API_SECRET || "";
     const USE_TESTNET = process.env.HYPERLIQUID_TESTNET === "true";
+    console.log("[Hyperliquid Daemon] Account:", ACCOUNT_ADDRESS.substring(0, 10) + "...");
 
-    this.process = spawn("python3.11", [DAEMON_SCRIPT]);
+    this.process = spawn("python3.11", ["-u", DAEMON_SCRIPT]);
+
+    // Log stderr for debugging
+    this.process.stderr!.on("data", (data) => {
+      console.error("[Hyperliquid Daemon] stderr:", data.toString());
+    });
 
     this.rl = readline.createInterface({
       input: this.process.stdout!,
@@ -56,12 +71,20 @@ class HyperliquidDaemon {
 
       this.rl!.once("line", (line) => {
         clearTimeout(timeout);
-        const response = JSON.parse(line);
-        if (response.ready) {
-          this.ready = true;
-          resolve();
-        } else {
-          reject(new Error("Daemon failed to initialize"));
+        console.log("[Hyperliquid Daemon] Received first line:", line);
+        try {
+          const response = JSON.parse(line);
+          console.log("[Hyperliquid Daemon] Parsed response:", response);
+          if (response.ready) {
+            this.ready = true;
+            console.log("[Hyperliquid Daemon] Ready!");
+            resolve();
+          } else {
+            reject(new Error("Daemon failed to initialize"));
+          }
+        } catch (e) {
+          console.error("[Hyperliquid Daemon] Failed to parse response:", e);
+          reject(e);
         }
       });
     });
@@ -105,8 +128,10 @@ class HyperliquidDaemon {
     await this.start();
   }
 
-  async request<T = any>(command: string, args: any = {}): Promise<T> {
-    if (!this.ready) {
+  async request(command: string, args: any = {}) {
+    console.log(`[Hyperliquid Daemon] Request: ${command}`);
+    if (!this.process || !this.ready) {
+      console.log(`[Hyperliquid Daemon] Not ready, starting... (process=${!!this.process}, ready=${this.ready})`);
       await this.start();
     }
 
@@ -166,5 +191,56 @@ export async function getCandles(
   endTime: number
 ) {
   return daemon.request("get_candles", { coin, interval, startTime, endTime });
+}
+
+// Trading functions
+export async function placeOrder(
+  coin: string,
+  is_buy: boolean,
+  sz: number,
+  limit_px: number,
+  order_type?: any,
+  reduce_only?: boolean
+) {
+  return daemon.request("place_order", { 
+    coin, 
+    is_buy, 
+    sz, 
+    limit_px, 
+    order_type, 
+    reduce_only 
+  });
+}
+
+export async function cancelOrder(coin: string, oid: number) {
+  return daemon.request("cancel_order", { coin, oid });
+}
+
+export async function cancelAllOrders(coin: string) {
+  return daemon.request("cancel_all_orders", { coin });
+}
+
+export async function closePosition(coin: string, sz?: number) {
+  return daemon.request("close_position", { coin, sz });
+}
+
+export async function modifyOrder(
+  oid: number,
+  coin: string,
+  is_buy: boolean,
+  sz: number,
+  limit_px: number,
+  order_type?: any,
+  reduce_only?: boolean
+) {
+  return daemon.request("modify_order", {
+    oid,
+    coin,
+    is_buy,
+    sz,
+    limit_px,
+    order_type,
+    reduce_only,
+  });
 }
 

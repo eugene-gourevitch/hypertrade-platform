@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 
 interface OrderBookProps {
   coin: string;
+  className?: string;
 }
 
-export function OrderBook({ coin }: OrderBookProps) {
+export function OrderBook({ coin, className }: OrderBookProps) {
   const [selectedCoin, setSelectedCoin] = useState(coin);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function OrderBook({ coin }: OrderBookProps) {
   let askTotal = 0;
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className={`h-full flex flex-col ${className || ""}`}>
       <CardHeader className="pb-2 border-b">
         <CardTitle className="text-sm font-medium">Order Book</CardTitle>
       </CardHeader>
