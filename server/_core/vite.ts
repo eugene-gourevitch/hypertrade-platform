@@ -7,6 +7,7 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
+  console.log("[Vite] Setting up Vite development server...");
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },

@@ -20,18 +20,23 @@ export default function Home() {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="text-xl font-bold text-primary">HyperTrade</div>
           <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <>
-                <span className="text-sm text-muted-foreground">{user?.email}</span>
-                <Button asChild variant="default">
-                  <a href="/trade">Launch App</a>
-                </Button>
-              </>
-            ) : (
-              <Button asChild variant="default">
-                <a href={getLoginUrl()}>Login</a>
+            <div className="flex items-center gap-3">
+              <Button asChild variant="outline">
+                <a href="/trade">Demo Mode</a>
               </Button>
-            )}
+              {isAuthenticated ? (
+                <>
+                  <span className="text-sm text-muted-foreground">{user?.email}</span>
+                  <Button asChild variant="default">
+                    <a href="/trade">Launch App</a>
+                  </Button>
+                </>
+              ) : (
+                <Button asChild variant="default">
+                  <a href="/trade">Try Now</a>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -43,23 +48,20 @@ export default function Home() {
             Professional Trading Platform
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Access your Hyperliquid account with advanced trading tools,
-            real-time market data, and professional-grade execution.
+            Experience professional trading tools with advanced charting,
+            real-time market data, and Bloomberg-style interface in demo mode.
           </p>
           <div className="flex gap-4 justify-center">
-            {isAuthenticated ? (
-              <Button asChild size="lg" className="text-lg px-8">
-                <a href="/trade">Start Trading</a>
-              </Button>
-            ) : (
-              <Button asChild size="lg" className="text-lg px-8">
-                <a href={getLoginUrl()}>Get Started</a>
-              </Button>
-            )}
+            <Button asChild size="lg" className="text-lg px-8">
+              <a href="/trade">Start Trading Demo</a>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="text-lg px-8">
+              <a href="#features">Learn More</a>
+            </Button>
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
+          <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
             <div className="p-6 bg-card rounded-lg border border-border">
               <div className="text-3xl mb-4">⚡</div>
               <h3 className="text-lg font-semibold mb-2">Real-Time Data</h3>
@@ -88,7 +90,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-border py-6 mt-16">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>Powered by Hyperliquid API • Professional Trading Platform</p>
+          <p>Demo Trading Platform • Powered by React & TypeScript • Professional Interface Design</p>
         </div>
       </footer>
     </div>
