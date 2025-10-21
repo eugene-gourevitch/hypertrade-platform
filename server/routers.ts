@@ -60,6 +60,13 @@ export const appRouter = router({
         }
       }),
 
+    getRecentTrades: publicProcedure
+      .input(z.object({ coin: z.string() }))
+      .query(async ({ input }) => {
+        // Recent trades only available via HTTP API
+        return await hyperliquidHTTP.getRecentTrades(input.coin);
+      }),
+
     getCandlesSnapshot: publicProcedure
       .input(
         z.object({

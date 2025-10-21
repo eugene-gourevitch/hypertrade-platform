@@ -85,6 +85,17 @@ export async function getUserFills(address: string) {
 }
 
 /**
+ * Get recent trades for a coin
+ */
+export async function getRecentTrades(coin: string) {
+  const response = await api.post('/info', {
+    type: 'recentTrades',
+    coin,
+  });
+  return response.data;
+}
+
+/**
  * Get candle data
  */
 export async function getCandles(

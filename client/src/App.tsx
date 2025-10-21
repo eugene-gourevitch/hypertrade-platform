@@ -5,7 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import TradingAdvanced from "./pages/TradingAdvanced";
+import TradingNew from "./pages/TradingNew";
 import TradingPro from "./pages/TradingPro";
 
 function Router() {
@@ -13,7 +13,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
-      <Route path={"/trade"} component={TradingAdvanced} />
+      <Route path={"/trade"} component={TradingNew} />
       <Route path={"/trade/pro"} component={TradingPro} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

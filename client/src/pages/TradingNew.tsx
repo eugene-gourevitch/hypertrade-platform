@@ -22,7 +22,8 @@ import { OpenOrdersTab } from "@/components/trading/OpenOrdersTab";
 import { OrderHistoryTab } from "@/components/trading/OrderHistoryTab";
 import { FundingHistoryTab } from "@/components/trading/FundingHistoryTab";
 import { TWAPTab } from "@/components/trading/TWAPTab";
-import { Activity, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { AIRecommendations } from "@/components/trading/AIRecommendations";
+import { Activity, TrendingUp, TrendingDown, DollarSign, Brain } from "lucide-react";
 
 export default function TradingNew() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -241,6 +242,10 @@ export default function TradingNew() {
                 <TabsTrigger value="twap" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
                   TWAP
                 </TabsTrigger>
+                <TabsTrigger value="ai-assistant" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                  <Brain className="h-4 w-4 mr-2" />
+                  AI Assistant
+                </TabsTrigger>
               </TabsList>
 
               <div className="flex-1 overflow-auto">
@@ -266,6 +271,14 @@ export default function TradingNew() {
 
                 <TabsContent value="twap" className="m-0 h-full">
                   <TWAPTab selectedCoin={selectedCoin} />
+                </TabsContent>
+
+                <TabsContent value="ai-assistant" className="m-0 h-full p-4">
+                  <AIRecommendations
+                    userState={userState}
+                    mids={mids}
+                    selectedCoin={selectedCoin}
+                  />
                 </TabsContent>
               </div>
             </Tabs>

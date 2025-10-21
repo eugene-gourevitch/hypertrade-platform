@@ -24,23 +24,27 @@ export function useAllMids() {
   const [isConnected, setIsConnected] = useState(false);
 
   // Use polling for data (works everywhere including Vercel)
-  const { data: polledMids } = trpc.market.getAllMids.useQuery(undefined, {
+  const { data: polledMids, isSuccess, isError } = trpc.market.getAllMids.useQuery(undefined, {
     refetchInterval: 3000, // Poll every 3 seconds
     refetchIntervalInBackground: false,
-    onSuccess: () => {
-      setIsConnected(true);
-    },
-    onError: () => {
-      setIsConnected(false);
-    },
   });
 
   // Update state when data arrives
   useEffect(() => {
     if (polledMids) {
       setMids(polledMids as Record<string, string>);
+      setIsConnected(true);
     }
   }, [polledMids]);
+
+  // Update connection status
+  useEffect(() => {
+    if (isError) {
+      setIsConnected(false);
+    } else if (isSuccess) {
+      setIsConnected(true);
+    }
+  }, [isSuccess, isError]);
 
   return { mids, isConnected };
 }
@@ -54,18 +58,12 @@ export function useL2Book(coin: string) {
   const [isConnected, setIsConnected] = useState(false);
 
   // Use polling for data (works everywhere including Vercel)
-  const { data: polledBook } = trpc.market.getL2Snapshot.useQuery(
+  const { data: polledBook, isSuccess, isError } = trpc.market.getL2Snapshot.useQuery(
     { coin },
     {
       enabled: !!coin,
       refetchInterval: 2000, // Poll every 2 seconds for order book
       refetchIntervalInBackground: false,
-      onSuccess: () => {
-        setIsConnected(true);
-      },
-      onError: () => {
-        setIsConnected(false);
-      },
     }
   );
 
@@ -73,27 +71,56 @@ export function useL2Book(coin: string) {
   useEffect(() => {
     if (polledBook) {
       setOrderBook(polledBook);
+      setIsConnected(true);
     }
   }, [polledBook]);
+
+  // Update connection status
+  useEffect(() => {
+    if (isError) {
+      setIsConnected(false);
+    } else if (isSuccess) {
+      setIsConnected(true);
+    }
+  }, [isSuccess, isError]);
 
   return { orderBook, isConnected };
 }
 
 /**
  * Subscribe to real-time trades for a specific coin
- * Note: Uses polling since WebSockets unavailable on serverless platforms
+ * Uses polling to fetch recent trades
  */
 export function useTrades(coin: string) {
   const [trades, setTrades] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
-  // For trades, we'll show a message that they need a full WebSocket server
-  // Trades are harder to poll effectively
-  useEffect(() => {
-    if (coin) {
-      console.info('[useTrades] Live trades require WebSocket server (not available on Vercel)');
+  // Use polling for recent trades
+  const { data: recentTrades, isSuccess, isError } = trpc.market.getRecentTrades.useQuery(
+    { coin },
+    {
+      enabled: !!coin,
+      refetchInterval: 3000, // Poll every 3 seconds for recent trades
+      refetchIntervalInBackground: false,
     }
-  }, [coin]);
+  );
+
+  // Update state when data arrives
+  useEffect(() => {
+    if (recentTrades && Array.isArray(recentTrades)) {
+      setTrades(recentTrades);
+      setIsConnected(true);
+    }
+  }, [recentTrades]);
+
+  // Update connection status
+  useEffect(() => {
+    if (isError) {
+      setIsConnected(false);
+    } else if (isSuccess) {
+      setIsConnected(true);
+    }
+  }, [isSuccess, isError]);
 
   return { trades, isConnected };
 }

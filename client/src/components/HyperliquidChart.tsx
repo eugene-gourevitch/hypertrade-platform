@@ -1,6 +1,4 @@
 import { useEffect, useRef, memo } from "react";
-import { trpc } from "@/lib/trpc";
-import { createHyperliquidDatafeed } from "@/lib/hyperliquid-datafeed";
 
 interface HyperliquidChartProps {
   symbol: string;
@@ -9,8 +7,6 @@ interface HyperliquidChartProps {
 
 function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
   const container = useRef<HTMLDivElement>(null);
-  const tvWidget = useRef<any>(null);
-  const trpcUtils = trpc.useUtils();
 
   useEffect(() => {
     if (!container.current) return;
@@ -30,64 +26,44 @@ function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
     const initWidget = () => {
       if (!window.TradingView || !container.current) return;
 
-      // Clean up previous widget
-      if (tvWidget.current) {
-        tvWidget.current.remove();
-        tvWidget.current = null;
-      }
+      // Clear the container
+      container.current.innerHTML = '';
 
-      const widgetOptions = {
-        symbol: `HYPERLIQUID:${symbol}USDC`,
-        datafeed: createHyperliquidDatafeed(trpcUtils),
-        interval: interval,
-        container: container.current,
-        library_path: "/charting_library/",
-        locale: "en",
-        disabled_features: ["use_localstorage_for_settings"],
-        enabled_features: ["study_templates"],
-        fullscreen: false,
-        autosize: true,
+      // Use the free TradingView widget
+      new window.TradingView.widget({
+        width: "100%",
+        height: "100%",
+        symbol: `BINANCE:${symbol}USDT`, // Using Binance as proxy for Hyperliquid price data
+        interval: interval as any,
+        timezone: "Etc/UTC",
         theme: "dark",
+        style: "1",
+        locale: "en",
         toolbar_bg: "#0a0a0a",
-        overrides: {
-          "paneProperties.background": "#0a0a0a",
-          "paneProperties.backgroundType": "solid",
-          "mainSeriesProperties.candleStyle.upColor": "#22c55e",
-          "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-          "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
-          "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
-          "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
-          "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
-        },
-        studies_overrides: {},
-        time_frames: [
-          { text: "1h", resolution: "1", description: "1 Hour" },
-          { text: "4h", resolution: "15", description: "4 Hours" },
-          { text: "1d", resolution: "60", description: "1 Day" },
-          { text: "1w", resolution: "240", description: "1 Week" },
-          { text: "1m", resolution: "1D", description: "1 Month" },
-        ],
-      };
-
-      try {
-        tvWidget.current = new window.TradingView.widget(widgetOptions);
-      } catch (error) {
-        console.error("[HyperliquidChart] Error initializing TradingView widget:", error);
-      }
+        enable_publishing: false,
+        hide_side_toolbar: false,
+        allow_symbol_change: true,
+        container_id: container.current.id,
+        backgroundColor: "#0a0a0a",
+        gridColor: "#1a1a1a",
+        hide_top_toolbar: false,
+        hide_legend: false,
+        save_image: false,
+        studies: [],
+      });
     };
 
     loadTradingView();
 
     return () => {
-      if (tvWidget.current) {
-        tvWidget.current.remove();
-        tvWidget.current = null;
+      if (container.current) {
+        container.current.innerHTML = '';
       }
     };
-  }, [symbol, interval, trpcUtils]);
+  }, [symbol, interval]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full bg-background">
       <div
         id={`tradingview_${symbol}_${interval}`}
         ref={container}

@@ -27,6 +27,7 @@ import { TransferDialog } from "@/components/TransferDialog";
 import { OrderBook } from "@/components/OrderBook";
 import LiveTrades from "@/components/LiveTrades";
 import { LiquidationWarning } from "@/components/LiquidationWarning";
+import { AIRecommendations } from "@/components/trading/AIRecommendations";
 
 export default function TradingAdvanced() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -742,6 +743,15 @@ export default function TradingAdvanced() {
                   </div>
                 </div>
               </Card>
+            )}
+
+            {/* AI Trading Assistant */}
+            {wallet.address && (
+              <AIRecommendations
+                userState={userState}
+                mids={mids}
+                selectedCoin={selectedCoin}
+              />
             )}
           </div>
         </div>
