@@ -5,6 +5,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
+import * as db from "./db";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || "",
@@ -128,10 +129,12 @@ Please provide a structured analysis with:
 
 Keep advice practical, specific, and actionable. Focus on risk management and capital preservation.`;
 
+      const startTime = Date.now();
+
       try {
         const message = await anthropic.messages.create({
-          model: "claude-3-5-sonnet-20241022",
-          max_tokens: 2000,
+          model: "claude-4.5-sonnet-20251015",
+          max_tokens: 4096,
           temperature: 0.7,
           messages: [
             {
@@ -145,6 +148,22 @@ Keep advice practical, specific, and actionable. Focus on risk management and ca
         const analysis =
           content.type === "text" ? content.text : "Unable to generate analysis";
 
+        const responseTime = Date.now() - startTime;
+
+        // Log AI recommendation to database
+        await db.saveAIRecommendation({
+          id: `${ctx.user.id}_${Date.now()}`,
+          userId: ctx.user.id,
+          selectedCoin,
+          accountValue: accountValue.toString(),
+          totalPositions: positions.length,
+          accountLeverage: accountLeverage.toFixed(2),
+          analysis,
+          tokensUsed: message.usage?.input_tokens + message.usage?.output_tokens || 0,
+          model: "claude-4.5-sonnet-20251015",
+          responseTime,
+        });
+
         return {
           success: true,
           analysis,
@@ -152,6 +171,20 @@ Keep advice practical, specific, and actionable. Focus on risk management and ca
         };
       } catch (error: any) {
         console.error("[AI Router] Error calling Anthropic API:", error);
+
+        // Log error to database
+        await db.saveAIRecommendation({
+          id: `${ctx.user.id}_${Date.now()}`,
+          userId: ctx.user.id,
+          selectedCoin,
+          accountValue: accountValue.toString(),
+          totalPositions: positions.length,
+          accountLeverage: accountLeverage.toFixed(2),
+          analysis: "",
+          errorMessage: error.message,
+          responseTime: Date.now() - startTime,
+        });
+
         throw new Error(`AI analysis failed: ${error.message}`);
       }
     }),

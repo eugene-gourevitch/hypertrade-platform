@@ -116,6 +116,24 @@ async function checkAllUsers() {
         // Send email alert
         const sent = await sendLiquidationWarning(alert.email, alert.positions);
 
+        // Log each position alert to database
+        for (const pos of alert.positions) {
+          const alertType = pos.distancePercent < 10 ? "critical" : "warning";
+
+          await db.saveLiquidationAlert({
+            id: `${user.id}_${pos.coin}_${Date.now()}`,
+            userId: user.id,
+            coin: pos.coin,
+            positionSize: pos.size,
+            currentPrice: pos.currentPrice,
+            liquidationPrice: pos.liquidationPrice,
+            distancePercent: pos.distancePercent.toString(),
+            alertType,
+            emailSent: sent,
+            emailError: sent ? null : "Failed to send email",
+          });
+        }
+
         if (sent) {
           lastAlertTime.set(user.id, Date.now());
           console.log(`[Liquidation Monitor] Alert sent to ${user.email}`);
