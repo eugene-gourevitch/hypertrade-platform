@@ -1,9 +1,12 @@
 {
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm build:frontend",
   "outputDirectory": "dist/public",
   "framework": null,
   "installCommand": "pnpm install",
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

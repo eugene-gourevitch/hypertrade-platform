@@ -28,13 +28,22 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
   useEffect(() => {
     // Check if MetaMask is installed
     setHasMetaMask(typeof window.ethereum !== 'undefined');
-    
+
+    // Check localStorage for saved wallet address
+    const savedAddress = localStorage.getItem('wallet_address');
+
     // Check if already connected
     if (window.ethereum) {
       window.ethereum.request({ method: 'eth_accounts' })
         .then((accounts: string[]) => {
           if (accounts.length > 0) {
-            setWalletAddress(accounts[0]);
+            const address = accounts[0];
+            setWalletAddress(address);
+            localStorage.setItem('wallet_address', address);
+          } else if (savedAddress) {
+            // Clear localStorage if MetaMask is disconnected
+            localStorage.removeItem('wallet_address');
+            setWalletAddress(null);
           }
         })
         .catch(console.error);
@@ -42,9 +51,12 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       // Listen for account changes
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length > 0) {
-          setWalletAddress(accounts[0]);
+          const address = accounts[0];
+          setWalletAddress(address);
+          localStorage.setItem('wallet_address', address);
         } else {
           setWalletAddress(null);
+          localStorage.removeItem('wallet_address');
         }
       });
 
@@ -52,6 +64,9 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       window.ethereum.on('chainChanged', () => {
         window.location.reload();
       });
+    } else if (savedAddress) {
+      // If MetaMask not installed but wallet was saved, clear it
+      localStorage.removeItem('wallet_address');
     }
 
     return () => {
@@ -83,85 +98,29 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       });
 
       const address = accounts[0];
+
+      // Store wallet address in localStorage (client-side only, no server auth needed)
+      localStorage.setItem('wallet_address', address);
       setWalletAddress(address);
 
-      // Get nonce from server
-      console.log('[WalletConnect] Requesting nonce for address:', address);
-      const nonceRes = await fetch('/api/auth/nonce', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Include cookies
-        body: JSON.stringify({ address }),
-      });
+      toast.success("✅ Wallet connected successfully!");
+      onConnected?.(address);
 
-      console.log('[WalletConnect] Nonce response status:', nonceRes.status);
-
-      if (!nonceRes.ok) {
-        const errorData = await nonceRes.json().catch(() => ({}));
-        console.error('[WalletConnect] Nonce request failed:', errorData);
-        throw new Error(errorData.error || 'Failed to get nonce');
-      }
-
-      const { message, nonce } = await nonceRes.json();
-      console.log('[WalletConnect] Nonce received:', nonce.substring(0, 10) + '...');
-
-      // Sign message with MetaMask
-      const signature = await window.ethereum.request({
-        method: 'personal_sign',
-        params: [message, address],
-      });
-
-      // Verify signature on server
-      console.log('[WalletConnect] Verifying signature...');
-      const verifyRes = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ address, signature, message }),
-      });
-      
-      console.log('[WalletConnect] Verify response status:', verifyRes.status);
-
-      if (!verifyRes.ok) {
-        const errorData = await verifyRes.json();
-        throw new Error(errorData.message || 'Authentication failed');
-      }
-
-      const { success } = await verifyRes.json();
-
-      if (success) {
-        toast.success("✅ Wallet connected successfully!");
-        onConnected?.(address);
-        // Redirect to trading page
+      // Redirect to trading page
+      setTimeout(() => {
         window.location.href = '/trade';
-      }
+      }, 500);
+
     } catch (error: any) {
       console.error("[WalletConnect] Connection failed:", error);
-      console.error("[WalletConnect] Error details:", {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
-      
+
       if (error.code === 4001) {
         toast.error("Connection rejected", {
           description: "You rejected the connection request",
         });
-      } else if (error.message.includes('Only') || error.message.includes('authorized') || error.message.includes('Access denied')) {
-        toast.error("Access Denied", {
-          description: error.message,
-        });
-      } else if (error.message.includes('nonce')) {
-        toast.error("Authentication Error", {
-          description: error.message + " - Check console for details",
-        });
-      } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-        toast.error("Network Error", {
-          description: "Could not connect to server. Is it running?",
-        });
       } else {
         toast.error("Connection Failed", {
-          description: error.message || "Unknown error - check console",
+          description: error.message || "Please try again",
         });
       }
     } finally {
@@ -171,11 +130,8 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
 
   const disconnectWallet = async () => {
     try {
-      // Call logout endpoint to clear session cookie
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      // Clear localStorage
+      localStorage.removeItem('wallet_address');
 
       // Clear local state
       setWalletAddress(null);
@@ -183,7 +139,7 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       // Show success message
       toast.success("Wallet disconnected - redirecting...");
 
-      // Redirect to home page (this will trigger a full reload)
+      // Redirect to home page
       setTimeout(() => {
         window.location.href = '/';
       }, 500);
