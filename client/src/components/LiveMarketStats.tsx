@@ -17,8 +17,8 @@ interface MarketMetrics {
 export function LiveMarketStats() {
   // Use polling instead of WebSocket subscriptions for homepage
   const { data: mids, isSuccess } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 2000, // Poll every 2 seconds
-    refetchIntervalInBackground: true,
+    refetchInterval: 10000, // Poll every 10 seconds (much slower)
+    refetchIntervalInBackground: false, // Don't poll when not visible
   });
 
   const [metrics, setMetrics] = useState<MarketMetrics>({
@@ -28,6 +28,8 @@ export function LiveMarketStats() {
     topLoser: null,
   });
 
+  const [previousMids, setPreviousMids] = useState<Record<string, string>>({});
+
   useEffect(() => {
     if (!mids || Object.keys(mids).length === 0) return;
 
@@ -35,11 +37,13 @@ export function LiveMarketStats() {
     const totalAssets = Object.keys(mids).length;
     const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
 
-    // For demo purposes, generate random changes
-    const changes = Object.keys(mids).map((coin) => ({
-      coin,
-      change: (Math.random() - 0.5) * 10,
-    }));
+    // Calculate real price changes from previous values
+    const changes = Object.entries(mids).map(([coin, price]) => {
+      const current = parseFloat(price);
+      const previous = parseFloat(previousMids[coin] || price);
+      const change = previous !== 0 ? ((current - previous) / previous) * 100 : 0;
+      return { coin, change };
+    });
 
     const sortedChanges = [...changes].sort((a, b) => b.change - a.change);
     const topGainer = sortedChanges[0];
@@ -51,6 +55,9 @@ export function LiveMarketStats() {
       topGainer,
       topLoser,
     });
+
+    // Store current prices for next comparison
+    setPreviousMids(mids);
   }, [mids]);
 
   const stats = [

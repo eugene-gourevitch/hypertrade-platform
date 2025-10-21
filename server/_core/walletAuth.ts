@@ -131,11 +131,13 @@ export function registerWalletAuthRoutes(app: Express) {
 
       // Check if wallet is authorized (if AUTHORIZED_WALLET is set)
       const authorizedWallet = process.env.AUTHORIZED_WALLET?.toLowerCase();
-      if (authorizedWallet && authorizedWallet !== 'none' && normalizedAddress !== authorizedWallet) {
+      console.log(`[WalletAuth] Checking authorization - Env wallet: "${authorizedWallet}", User wallet: "${normalizedAddress}"`);
+      
+      if (authorizedWallet && authorizedWallet !== 'none' && authorizedWallet !== '' && normalizedAddress !== authorizedWallet) {
         console.warn(`[WalletAuth] ❌ Unauthorized wallet attempt: ${normalizedAddress}`);
         res.status(403).json({ 
           error: "Access denied",
-          message: `Only authorized wallets can access this platform. Your wallet: ${normalizedAddress}`
+          message: `Only authorized wallets can access this platform. Your wallet: ${normalizedAddress}, Authorized: ${authorizedWallet}`
         });
         return;
       }

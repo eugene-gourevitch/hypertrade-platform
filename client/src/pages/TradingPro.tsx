@@ -45,20 +45,23 @@ export default function TradingPro() {
   // Fetch market data with WebSocket updates
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 1000, // Fallback polling
+    refetchInterval: 5000, // Poll every 5 seconds (slower, less crazy)
+    refetchIntervalInBackground: false, // Don't poll when tab not active
   });
 
   // Fetch account data
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 1000,
+      refetchInterval: 3000, // Slower polling - every 3 seconds
+      refetchIntervalInBackground: false,
     });
 
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 1000,
+      refetchInterval: 3000, // Slower polling - every 3 seconds
+      refetchIntervalInBackground: false,
     });
 
   // Get current price

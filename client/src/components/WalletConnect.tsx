@@ -86,17 +86,24 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       setWalletAddress(address);
 
       // Get nonce from server
+      console.log('[WalletConnect] Requesting nonce for address:', address);
       const nonceRes = await fetch('/api/auth/nonce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies
         body: JSON.stringify({ address }),
       });
 
+      console.log('[WalletConnect] Nonce response status:', nonceRes.status);
+
       if (!nonceRes.ok) {
-        throw new Error('Failed to get nonce');
+        const errorData = await nonceRes.json().catch(() => ({}));
+        console.error('[WalletConnect] Nonce request failed:', errorData);
+        throw new Error(errorData.error || 'Failed to get nonce');
       }
 
       const { message, nonce } = await nonceRes.json();
+      console.log('[WalletConnect] Nonce received:', nonce.substring(0, 10) + '...');
 
       // Sign message with MetaMask
       const signature = await window.ethereum.request({
@@ -105,12 +112,15 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       });
 
       // Verify signature on server
+      console.log('[WalletConnect] Verifying signature...');
       const verifyRes = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ address, signature, nonce }),
+        body: JSON.stringify({ address, signature, message }),
       });
+      
+      console.log('[WalletConnect] Verify response status:', verifyRes.status);
 
       if (!verifyRes.ok) {
         const errorData = await verifyRes.json();
@@ -126,19 +136,32 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
         window.location.href = '/trade';
       }
     } catch (error: any) {
-      console.error("[WalletAuth] Connection failed:", error);
+      console.error("[WalletConnect] Connection failed:", error);
+      console.error("[WalletConnect] Error details:", {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
       
       if (error.code === 4001) {
         toast.error("Connection rejected", {
           description: "You rejected the connection request",
         });
-      } else if (error.message.includes('Only') || error.message.includes('authorized')) {
+      } else if (error.message.includes('Only') || error.message.includes('authorized') || error.message.includes('Access denied')) {
         toast.error("Access Denied", {
           description: error.message,
         });
+      } else if (error.message.includes('nonce')) {
+        toast.error("Authentication Error", {
+          description: error.message + " - Check console for details",
+        });
+      } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        toast.error("Network Error", {
+          description: "Could not connect to server. Is it running?",
+        });
       } else {
-        toast.error("Connection failed", {
-          description: error.message || "Please try again",
+        toast.error("Connection Failed", {
+          description: error.message || "Unknown error - check console",
         });
       }
     } finally {
@@ -148,16 +171,25 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
 
   const disconnectWallet = async () => {
     try {
+      // Call logout endpoint to clear session cookie
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
-      
+
+      // Clear local state
       setWalletAddress(null);
-      toast.success("Wallet disconnected");
-      window.location.href = '/';
+
+      // Show success message
+      toast.success("Wallet disconnected - redirecting...");
+
+      // Redirect to home page (this will trigger a full reload)
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } catch (error) {
       console.error("[WalletAuth] Logout failed:", error);
+      toast.error("Logout failed - try refreshing the page");
     }
   };
 

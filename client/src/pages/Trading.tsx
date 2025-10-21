@@ -28,13 +28,15 @@ export default function Trading() {
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 2000, // Refresh every 2 seconds
+    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchIntervalInBackground: false,
   });
   const { data: orderBook } = trpc.market.getL2Snapshot.useQuery(
     { coin: selectedCoin },
     {
       enabled: !!selectedCoin,
-      refetchInterval: 1000,
+      refetchInterval: 5000, // Slow down order book
+      refetchIntervalInBackground: false,
     }
   );
 
@@ -42,12 +44,14 @@ export default function Trading() {
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 3000,
+      refetchInterval: 5000,
+      refetchIntervalInBackground: false,
     });
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 2000,
+      refetchInterval: 5000,
+      refetchIntervalInBackground: false,
     });
   const { data: userFills } = trpc.account.getUserFills.useQuery(undefined, {
     enabled: isAuthenticated,

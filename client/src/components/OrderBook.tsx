@@ -17,7 +17,8 @@ export function OrderBook({ coin, className }: OrderBookProps) {
   const { data: orderBook } = trpc.market.getL2Snapshot.useQuery(
     { coin: selectedCoin },
     {
-      refetchInterval: 500, // Update every 500ms for real-time order book
+      refetchInterval: 5000, // Update every 5 seconds
+      refetchIntervalInBackground: false,
       enabled: !!selectedCoin,
     }
   );

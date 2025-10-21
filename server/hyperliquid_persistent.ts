@@ -73,6 +73,7 @@ class HyperliquidDaemon {
 
     if (!this.process) {
       console.warn("[Hyperliquid Daemon] ⚠️ Daemon not started - Python unavailable");
+      this.ready = false;
       return;
     }
 

@@ -18,6 +18,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import HyperliquidChart from "@/components/HyperliquidChart";
 import { useWallet } from "@/hooks/useWallet";
+import { useHyperliquid } from "@/hooks/useHyperliquid";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { AccountSetupHelp } from "@/components/AccountSetupHelp";
@@ -29,6 +30,7 @@ import { LiquidationWarning } from "@/components/LiquidationWarning";
 export default function TradingAdvanced() {
   const { user, isAuthenticated, loading } = useAuth();
   const wallet = useWallet();
+  const hyperliquid = useHyperliquid();
   
   const [selectedCoin, setSelectedCoin] = useState("BTC");
   const [orderType, setOrderType] = useState<"market" | "limit" | "stop" | "bracket">("limit");
@@ -46,157 +48,78 @@ export default function TradingAdvanced() {
   // Fetch market data
   const { data: meta } = trpc.market.getMeta.useQuery();
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 500, // Update every 500ms for true real-time data
+    refetchInterval: 5000, // Update every 5 seconds
+    refetchIntervalInBackground: false,
   });
 
   // Fetch account data
   const { data: userState, refetch: refetchUserState } =
     trpc.account.getUserState.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 1000, // Update every 1 second for account data
+      refetchInterval: 5000, // Update every 5 seconds
+      refetchIntervalInBackground: false,
     });
   const { data: openOrders, refetch: refetchOpenOrders } =
     trpc.account.getOpenOrders.useQuery(undefined, {
       enabled: isAuthenticated,
-      refetchInterval: 1000, // Update every 1 second for orders
+      refetchInterval: 5000, // Update every 5 seconds
+      refetchIntervalInBackground: false,
     });
 
-  // Trading mutations
-  const placeMarketOrder = trpc.trading.placeMarketOrder.useMutation({
-    onSuccess: () => {
-      toast.success("Market order placed");
-      setSize("");
-      refetchUserState();
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Order failed: ${error.message}`),
-  });
-
-  const placeLimitOrder = trpc.trading.placeLimitOrder.useMutation({
-    onSuccess: () => {
-      toast.success("Limit order placed");
-      setSize("");
-      setPrice("");
-      refetchUserState();
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Order failed: ${error.message}`),
-  });
-
-  const placeStopLoss = trpc.trading.placeStopLoss.useMutation({
-    onSuccess: () => {
-      toast.success("Stop loss placed");
-      setSize("");
-      setStopLossPrice("");
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Stop loss failed: ${error.message}`),
-  });
-
-  const placeTakeProfit = trpc.trading.placeTakeProfit.useMutation({
-    onSuccess: () => {
-      toast.success("Take profit placed");
-      setSize("");
-      setTakeProfitPrice("");
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Take profit failed: ${error.message}`),
-  });
-
-  const placeBracketOrder = trpc.trading.placeBracketOrder.useMutation({
-    onSuccess: () => {
-      toast.success("Bracket order placed");
-      setSize("");
-      setPrice("");
-      setStopLossPrice("");
-      setTakeProfitPrice("");
-      refetchUserState();
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Bracket order failed: ${error.message}`),
-  });
-
-  const updateLeverageMutation = trpc.trading.updateLeverage.useMutation({
-    onSuccess: () => {
-      toast.success(`Leverage updated to ${leverage[0]}x`);
-      refetchUserState();
-    },
-    onError: (error) => toast.error(`Failed to update leverage: ${error.message}`),
-  });
-
-  const cancelOrder = trpc.trading.cancelOrder.useMutation({
-    onSuccess: () => {
-      toast.success("Order cancelled");
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Cancel failed: ${error.message}`),
-  });
-
-  const closePosition = trpc.trading.closePosition.useMutation({
-    onSuccess: () => {
-      toast.success("Position closed");
-      refetchUserState();
-      refetchOpenOrders();
-    },
-    onError: (error) => toast.error(`Failed to close position: ${error.message}`),
-  });
-
-  const handlePlaceOrder = () => {
+  // Client-side trading with user's wallet
+  const handlePlaceOrder = async () => {
     if (!size || parseFloat(size) <= 0) {
       toast.error("Please enter a valid size");
       return;
     }
 
-    if (orderType === "market") {
-      placeMarketOrder.mutate({
-        coin: selectedCoin,
-        isBuy: side === "buy",
-        size: parseFloat(size),
-      });
-    } else if (orderType === "limit") {
-      if (!price || parseFloat(price) <= 0) {
-        toast.error("Please enter a valid price");
-        return;
+    try {
+      if (orderType === "market") {
+        await hyperliquid.placeMarketOrder({
+          coin: selectedCoin,
+          isBuy: side === "buy",
+          size: parseFloat(size),
+          slippage: 0.5, // 0.5% default slippage
+        });
+        setSize("");
+        refetchUserState();
+        refetchOpenOrders();
+      } else if (orderType === "limit") {
+        if (!price || parseFloat(price) <= 0) {
+          toast.error("Please enter a valid price");
+          return;
+        }
+        await hyperliquid.placeOrder({
+          coin: selectedCoin,
+          isBuy: side === "buy",
+          size: parseFloat(size),
+          limitPrice: parseFloat(price),
+        });
+        setSize("");
+        setPrice("");
+        refetchUserState();
+        refetchOpenOrders();
+      } else if (orderType === "stop" || orderType === "bracket") {
+        toast.info("Stop loss and bracket orders coming soon! Use limit orders for now.");
       }
-      placeLimitOrder.mutate({
-        coin: selectedCoin,
-        isBuy: side === "buy",
-        size: parseFloat(size),
-        price: parseFloat(price),
-      });
-    } else if (orderType === "stop") {
-      if (!stopLossPrice || parseFloat(stopLossPrice) <= 0) {
-        toast.error("Please enter a valid stop loss price");
-        return;
-      }
-      placeStopLoss.mutate({
-        coin: selectedCoin,
-        isBuy: side === "sell", // Opposite side for stop loss
-        size: parseFloat(size),
-        triggerPrice: parseFloat(stopLossPrice),
-      });
-    } else if (orderType === "bracket") {
-      if (!price || !stopLossPrice || !takeProfitPrice) {
-        toast.error("Please enter entry, stop loss, and take profit prices");
-        return;
-      }
-      placeBracketOrder.mutate({
-        coin: selectedCoin,
-        isBuy: side === "buy",
-        size: parseFloat(size),
-        entryPrice: parseFloat(price),
-        stopLossPrice: parseFloat(stopLossPrice),
-        takeProfitPrice: parseFloat(takeProfitPrice),
-      });
+    } catch (error: any) {
+      // Error already handled by useHyperliquid hook
+      console.error("Order placement failed:", error);
     }
   };
 
-  const handleUpdateLeverage = () => {
-    updateLeverageMutation.mutate({
-      coin: selectedCoin,
-      leverage: leverage[0],
-      isCross: !isIsolated,
-    });
+  const handleUpdateLeverage = async () => {
+    try {
+      await hyperliquid.updateLeverage({
+        coin: selectedCoin,
+        leverage: leverage[0],
+        isCross: !isIsolated,
+      });
+      refetchUserState();
+    } catch (error: any) {
+      // Error already handled by useHyperliquid hook
+      console.error("Leverage update failed:", error);
+    }
   };
 
   const currentPrice = mids?.[selectedCoin] || "0";
@@ -459,18 +382,28 @@ export default function TradingAdvanced() {
                             </td>
                             <td className="text-center px-2">
                               <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive" 
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
                                   className="h-6 px-2 text-[10px]"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (confirm(`Close ${position.coin} position (${Math.abs(size).toFixed(4)})?`)) {
-                                      closePosition.mutate({ coin: position.coin });
+                                      try {
+                                        await hyperliquid.closePosition({
+                                          coin: position.coin,
+                                          size: Math.abs(size),
+                                          isLong: size > 0
+                                        });
+                                        refetchUserState();
+                                        refetchOpenOrders();
+                                      } catch (error) {
+                                        console.error("Failed to close position:", error);
+                                      }
                                     }
                                   }}
-                                  disabled={closePosition.isPending}
+                                  disabled={hyperliquid.status.isLoading}
                                 >
-                                  {closePosition.isPending ? "Closing..." : "Close"}
+                                  {hyperliquid.status.isLoading ? "Closing..." : "Close"}
                                 </Button>
                               </div>
                             </td>
@@ -662,12 +595,17 @@ export default function TradingAdvanced() {
                         size="sm"
                         variant="ghost"
                         className="w-full mt-1 h-6 text-xs"
-                        onClick={() =>
-                          cancelOrder.mutate({
-                            coin: order.coin,
-                            oid: order.oid,
-                          })
-                        }
+                        onClick={async () => {
+                          try {
+                            await hyperliquid.cancelOrder({
+                              coin: order.coin,
+                              oid: order.oid,
+                            });
+                            refetchOpenOrders();
+                          } catch (error) {
+                            console.error("Failed to cancel order:", error);
+                          }
+                        }}
                       >
                         Cancel
                       </Button>

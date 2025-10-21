@@ -17,8 +17,8 @@ interface PriceChange {
 export function MarketTicker() {
   // Use polling instead of WebSocket subscriptions for homepage
   const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 2000, // Poll every 2 seconds
-    refetchIntervalInBackground: true,
+    refetchInterval: 10000, // Poll every 10 seconds (much slower)
+    refetchIntervalInBackground: false, // Don't poll when not visible
   });
 
   const [priceChanges, setPriceChanges] = useState<Record<string, PriceChange>>({});
@@ -114,7 +114,7 @@ export function MarketTicker() {
 
         .ticker-content {
           display: inline-flex;
-          animation: ticker-scroll 60s linear infinite;
+          animation: ticker-scroll 480s linear infinite;
           will-change: transform;
         }
 

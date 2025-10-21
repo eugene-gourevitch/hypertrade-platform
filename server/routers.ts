@@ -6,6 +6,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as hyperliquid from "./hyperliquid"; // TODO: Migrate remaining functions to persistent daemon
 import * as hyperliquidPersistent from "./hyperliquid_persistent";
+import * as hyperliquidHTTP from "./hyperliquid_http"; // HTTP-only fallback (works everywhere)
 import * as db from "./db";
 import { randomBytes } from "crypto";
 
@@ -27,17 +28,34 @@ export const appRouter = router({
   // Market data endpoints (public)
   market: router({
     getMeta: publicProcedure.query(async () => {
-      return await hyperliquidPersistent.getMeta();
+      try {
+        return await hyperliquidPersistent.getMeta();
+      } catch (error: any) {
+        // Fallback to HTTP-only API (no Python required)
+        console.warn('[Market] Daemon failed, using HTTP fallback:', error.message);
+        return await hyperliquidHTTP.getMeta();
+      }
     }),
 
     getAllMids: publicProcedure.query(async () => {
-      return await hyperliquidPersistent.getAllMids();
+      try {
+        return await hyperliquidPersistent.getAllMids();
+      } catch (error: any) {
+        // Fallback to HTTP-only API (no Python required)
+        console.warn('[Market] Daemon failed, using HTTP fallback:', error.message);
+        return await hyperliquidHTTP.getAllMids();
+      }
     }),
 
     getL2Snapshot: publicProcedure
       .input(z.object({ coin: z.string() }))
       .query(async ({ input }) => {
-        return await hyperliquidPersistent.getL2Snapshot(input.coin);
+        try {
+          return await hyperliquidPersistent.getL2Snapshot(input.coin);
+        } catch (error: any) {
+          console.warn('[Market] Daemon failed, using HTTP fallback:', error.message);
+          return await hyperliquidHTTP.getL2Snapshot(input.coin);
+        }
       }),
 
     getCandlesSnapshot: publicProcedure
@@ -68,12 +86,22 @@ export const appRouter = router({
   account: router({
     getUserState: protectedProcedure.query(async ({ ctx }) => {
       // Use the connected wallet address to fetch positions
-      return await hyperliquidPersistent.getUserState(ctx.user.id);
+      try {
+        return await hyperliquidPersistent.getUserState(ctx.user.id);
+      } catch (error: any) {
+        console.warn('[Account] Daemon failed, using HTTP fallback:', error.message);
+        return await hyperliquidHTTP.getUserState(ctx.user.id);
+      }
     }),
 
     getOpenOrders: protectedProcedure.query(async ({ ctx }) => {
       // Use the connected wallet address to fetch open orders
-      return await hyperliquidPersistent.getOpenOrders(ctx.user.id);
+      try {
+        return await hyperliquidPersistent.getOpenOrders(ctx.user.id);
+      } catch (error: any) {
+        console.warn('[Account] Daemon failed, using HTTP fallback:', error.message);
+        return await hyperliquidHTTP.getOpenOrders(ctx.user.id);
+      }
     }),
 
     getUserFills: protectedProcedure.query(async ({ ctx }) => {
