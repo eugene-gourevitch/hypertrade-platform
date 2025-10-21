@@ -2,14 +2,14 @@ import { mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mys
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
+ * Uses wallet addresses as primary identifiers.
  * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
+  id: varchar("id", { length: 64 }).primaryKey(), // Wallet address (0x...)
+  name: text("name"), // Optional display name
+  email: varchar("email", { length: 320 }), // Optional email
+  loginMethod: varchar("loginMethod", { length: 64 }).default("wallet"), // Always 'wallet'
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow(),

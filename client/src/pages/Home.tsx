@@ -1,6 +1,14 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
+import { WalletConnect } from "@/components/WalletConnect";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -26,15 +34,28 @@ export default function Home() {
               </Button>
               {isAuthenticated ? (
                 <>
-                  <span className="text-sm text-muted-foreground">{user?.email}</span>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {user?.id?.slice(0, 6)}...{user?.id?.slice(-4)}
+                  </span>
                   <Button asChild variant="default">
                     <a href="/trade">Launch App</a>
                   </Button>
                 </>
               ) : (
-                <Button asChild variant="default">
-                  <a href={getLoginUrl()}>Login with Google</a>
-                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="default">Connect Wallet</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Connect Wallet</DialogTitle>
+                      <DialogDescription>
+                        Connect your Web3 wallet to access the trading platform
+                      </DialogDescription>
+                    </DialogHeader>
+                    <WalletConnect />
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
           </div>
@@ -48,13 +69,24 @@ export default function Home() {
             Professional Trading Platform
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Professional trading platform with Google OAuth authentication.
-            <br />Access restricted to authorized users only.
+            Decentralized professional trading platform with Web3 wallet authentication.
+            <br />Permissionless access - connect any wallet to start trading.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button asChild size="lg" className="text-lg px-8">
-              <a href={getLoginUrl()}>Sign In with Google</a>
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" className="text-lg px-8">Connect Wallet</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Connect Wallet</DialogTitle>
+                  <DialogDescription>
+                    Connect your Web3 wallet to access the trading platform
+                  </DialogDescription>
+                </DialogHeader>
+                <WalletConnect />
+              </DialogContent>
+            </Dialog>
             <Button asChild size="lg" variant="outline" className="text-lg px-8">
               <a href="#features">Learn More</a>
             </Button>

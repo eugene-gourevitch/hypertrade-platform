@@ -6,13 +6,15 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import TradingAdvanced from "./pages/TradingAdvanced";
+import TradingPro from "./pages/TradingPro";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
-      <Route path={"/trade"} component={TradingAdvanced} />
+      <Route path={"/trade"} component={TradingPro} />
+      <Route path={"/trade/advanced"} component={TradingAdvanced} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
