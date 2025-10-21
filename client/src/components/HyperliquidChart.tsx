@@ -26,7 +26,7 @@ function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
     script.src = "https://s3.tradingview.com/tv.js";
     script.async = true;
     script.onload = () => {
-      if (typeof window.TradingView !== "undefined") {
+      if (window.TradingView) {
         new window.TradingView.widget({
           autosize: true,
           symbol: `BINANCE:${tvSymbol}`,
@@ -67,11 +67,4 @@ function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
 }
 
 export default memo(HyperliquidChart);
-
-// Extend Window interface for TradingView
-declare global {
-  interface Window {
-    TradingView: any;
-  }
-}
 

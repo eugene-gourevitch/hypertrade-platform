@@ -10,12 +10,6 @@ import { toast } from "sonner";
 import { Wallet, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
 interface WalletConnectProps {
   onConnected?: (address: string) => void;
 }

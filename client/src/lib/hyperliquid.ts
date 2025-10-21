@@ -380,3 +380,27 @@ export async function updateIsolatedMargin(
   const signature = await signAction(signer, action, nonce);
   return await sendAction(address, action, signature, nonce);
 }
+
+/**
+ * Withdraw USDC from Hyperliquid to L1
+ */
+export async function withdrawUSDC(
+  signer: ethers.JsonRpcSigner,
+  amount: number, // Amount in USDC
+  destination?: string // Destination address (defaults to signer address)
+): Promise<any> {
+  const address = await signer.getAddress();
+  const nonce = getTimestamp();
+
+  const action = {
+    type: "withdraw",
+    hyperliquidChain: "Mainnet",
+    signatureChainId: "0xa4b1", // Arbitrum
+    amount: (amount * 1e6).toString(), // Convert to 6 decimal USDC
+    time: nonce,
+    destination: destination || address,
+  };
+
+  const signature = await signAction(signer, action, nonce);
+  return await sendAction(address, action, signature, nonce);
+}

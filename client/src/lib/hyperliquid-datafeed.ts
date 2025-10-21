@@ -87,12 +87,12 @@ export function createHyperliquidDatafeed(trpcClient: ReturnType<typeof trpc.use
         const endTime = to * 1000;
 
         // Fetch candles from Hyperliquid
-        const candles = await trpcClient.client.market.getCandlesSnapshot.query({
+        const candles: any[] = await trpcClient.client.market.getCandlesSnapshot.query({
           coin,
           interval,
           startTime,
           endTime,
-        });
+        }) as any[];
 
         if (!candles || candles.length === 0) {
           onResult([], { noData: true });

@@ -120,7 +120,7 @@ export default function Trading() {
   };
 
   const currentPrice = mids?.[selectedCoin] || "0";
-  const coins = meta?.universe?.map((asset) => asset.name) || [];
+  const coins = meta?.universe?.map((asset: any) => asset.name) || [];
 
   // Auto-fill price for limit orders
   useEffect(() => {
@@ -198,7 +198,7 @@ export default function Trading() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {coins.map((coin) => (
+                    {coins.map((coin: string) => (
                       <SelectItem key={coin} value={coin}>
                         {coin}/USDC
                       </SelectItem>
@@ -227,7 +227,7 @@ export default function Trading() {
                     {orderBook?.levels?.[1]
                       ?.slice(0, 10)
                       .reverse()
-                      .map((level, idx) => (
+                      .map((level: any, idx: number) => (
                         <div
                           key={idx}
                           className="grid grid-cols-2 text-sm font-mono"
@@ -248,7 +248,7 @@ export default function Trading() {
                     <span className="text-right">Size</span>
                   </div>
                   <div className="space-y-1">
-                    {orderBook?.levels?.[0]?.slice(0, 10).map((level, idx) => (
+                    {orderBook?.levels?.[0]?.slice(0, 10).map((level: any, idx: number) => (
                       <div
                         key={idx}
                         className="grid grid-cols-2 text-sm font-mono"
@@ -340,7 +340,7 @@ export default function Trading() {
                 <p className="text-sm text-muted-foreground">No open positions</p>
               ) : (
                 <div className="space-y-2">
-                  {positions.map((pos, idx) => {
+                  {positions.map((pos: any, idx: number) => {
                     const position = pos.position;
                     const size = parseFloat(position.szi || "0");
                     const pnl = parseFloat(position.unrealizedPnl || "0");
@@ -400,7 +400,7 @@ export default function Trading() {
                         </tr>
                       </thead>
                       <tbody>
-                        {openOrders.map((order) => (
+                        {openOrders.map((order: any) => (
                           <tr key={order.oid} className="border-b border-border/50">
                             <td className="py-2">{order.coin}</td>
                             <td
@@ -444,7 +444,7 @@ export default function Trading() {
               </TabsContent>
 
               <TabsContent value="history" className="mt-4">
-                {!userFills || userFills.length === 0 ? (
+                {!userFills || (userFills as any[]).length === 0 ? (
                   <p className="text-sm text-muted-foreground">No trade history</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -460,7 +460,7 @@ export default function Trading() {
                         </tr>
                       </thead>
                       <tbody>
-                        {userFills.slice(0, 20).map((fill, idx) => (
+                        {(userFills as any[]).slice(0, 20).map((fill: any, idx: number) => (
                           <tr key={idx} className="border-b border-border/50">
                             <td className="py-2">
                               {new Date(fill.time).toLocaleString()}

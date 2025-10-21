@@ -162,7 +162,7 @@ class HyperliquidDaemon {
 
       // Reject all pending requests
       const error = new Error(`Daemon process exited with code ${code}`);
-      for (const [id, pending] of this.pendingRequests.entries()) {
+      for (const [id, pending] of Array.from(this.pendingRequests.entries())) {
         clearTimeout(pending.timer);
         pending.reject(error);
       }

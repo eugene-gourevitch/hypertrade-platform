@@ -288,6 +288,45 @@ export function useHyperliquid() {
     [placeMarketOrder]
   );
 
+  /**
+   * Withdraw USDC to L1
+   */
+  const withdrawUSDC = useCallback(
+    async (params: { amount: number; destination?: string }) => {
+      setStatus({ isLoading: true, error: null, txHash: null });
+
+      try {
+        const signer = await getSigner();
+
+        toast.loading(`Withdrawing ${params.amount} USDC...`, {
+          id: "withdraw-tx",
+        });
+
+        const result = await hyperliquid.withdrawUSDC(
+          signer,
+          params.amount,
+          params.destination
+        );
+
+        toast.success(
+          `Withdrawal initiated: ${params.amount} USDC to ${params.destination || "your wallet"}`,
+          { id: "withdraw-tx" }
+        );
+
+        setStatus({ isLoading: false, error: null, txHash: result.txHash });
+        return result;
+      } catch (error: any) {
+        console.error("Withdrawal failed:", error);
+        toast.error(`Withdrawal failed: ${error.message}`, {
+          id: "withdraw-tx",
+        });
+        setStatus({ isLoading: false, error: error.message, txHash: null });
+        throw error;
+      }
+    },
+    [getSigner]
+  );
+
   return {
     placeOrder,
     placeMarketOrder,
@@ -296,6 +335,7 @@ export function useHyperliquid() {
     modifyOrder,
     updateLeverage,
     closePosition,
+    withdrawUSDC,
     status,
   };
 }

@@ -5,12 +5,6 @@ interface TradingViewChartProps {
   theme?: "light" | "dark";
 }
 
-declare global {
-  interface Window {
-    TradingView?: any;
-  }
-}
-
 function TradingViewChart({ symbol, theme = "dark" }: TradingViewChartProps) {
   const container = useRef<HTMLDivElement>(null);
   const scriptLoaded = useRef(false);

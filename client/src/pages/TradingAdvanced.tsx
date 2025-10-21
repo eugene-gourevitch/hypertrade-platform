@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import HyperliquidChart from "@/components/HyperliquidChart";
 import { useWallet } from "@/hooks/useWallet";
 import { useHyperliquid } from "@/hooks/useHyperliquid";
+import { useHyperliquidAccount, useHyperliquidMeta, useHyperliquidMids } from "@/hooks/useHyperliquidAccount";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { AccountSetupHelp } from "@/components/AccountSetupHelp";
@@ -45,26 +46,20 @@ export default function TradingAdvanced() {
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [transferDialogTab, setTransferDialogTab] = useState<"usd" | "spot" | "bridge">("bridge");
 
-  // Fetch market data
-  const { data: meta } = trpc.market.getMeta.useQuery();
-  const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
-    refetchInterval: 5000, // Update every 5 seconds
-    refetchIntervalInBackground: false,
-  });
+  // Fetch market data (client-side, works on Vercel)
+  const { meta } = useHyperliquidMeta();
+  const { mids } = useHyperliquidMids({ refetchInterval: 5000 });
 
-  // Fetch account data
-  const { data: userState, refetch: refetchUserState } =
-    trpc.account.getUserState.useQuery(undefined, {
-      enabled: isAuthenticated,
-      refetchInterval: 5000, // Update every 5 seconds
-      refetchIntervalInBackground: false,
-    });
-  const { data: openOrders, refetch: refetchOpenOrders } =
-    trpc.account.getOpenOrders.useQuery(undefined, {
-      enabled: isAuthenticated,
-      refetchInterval: 5000, // Update every 5 seconds
-      refetchIntervalInBackground: false,
-    });
+  // Fetch account data (client-side, works on Vercel)
+  const {
+    userState,
+    openOrders,
+    isLoading: isLoadingAccount,
+    refetch: refetchAccount,
+  } = useHyperliquidAccount({ refetchInterval: 5000 });
+
+  const refetchUserState = refetchAccount;
+  const refetchOpenOrders = refetchAccount;
 
   // Client-side trading with user's wallet
   const handlePlaceOrder = async () => {
@@ -257,11 +252,17 @@ export default function TradingAdvanced() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {coins.map((coin: string) => (
-                      <SelectItem key={coin} value={coin}>
-                        {coin}/USDC
+                    {coins.length === 0 ? (
+                      <SelectItem value="BTC" disabled>
+                        Loading...
                       </SelectItem>
-                    ))}
+                    ) : (
+                      coins.map((coin: string) => (
+                        <SelectItem key={coin} value={coin}>
+                          {coin}/USDC
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <div className="flex-1 flex items-center gap-3">
@@ -275,7 +276,7 @@ export default function TradingAdvanced() {
                 </div>
               </div>
               <div className="h-[500px]">
-                <HyperliquidChart symbol={selectedCoin} theme="dark" />
+                <HyperliquidChart symbol={selectedCoin} interval="15" />
               </div>
             </Card>
 

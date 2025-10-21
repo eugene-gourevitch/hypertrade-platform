@@ -3,14 +3,14 @@ import { AlertTriangle } from "lucide-react";
 
 interface LiquidationWarningProps {
   positions: any[];
-  mids: Record<string, number>;
+  mids: Record<string, string>;
 }
 
 export function LiquidationWarning({ positions, mids }: LiquidationWarningProps) {
   // Calculate risk level for each position
   const riskyPositions = positions.filter((pos) => {
     const position = pos.position;
-    const currentPrice = mids[position.coin] || 0;
+    const currentPrice = parseFloat(mids[position.coin] || "0");
     const liquidationPrice = parseFloat(position.liquidationPx || "0");
     const size = parseFloat(position.szi || "0");
     
@@ -33,7 +33,7 @@ export function LiquidationWarning({ positions, mids }: LiquidationWarningProps)
 
   const criticalPositions = riskyPositions.filter((pos) => {
     const position = pos.position;
-    const currentPrice = mids[position.coin] || 0;
+    const currentPrice = parseFloat(mids[position.coin] || "0");
     const liquidationPrice = parseFloat(position.liquidationPx || "0");
     const size = parseFloat(position.szi || "0");
     
@@ -57,7 +57,7 @@ export function LiquidationWarning({ positions, mids }: LiquidationWarningProps)
         <div className="space-y-1">
           {riskyPositions.map((pos, idx) => {
             const position = pos.position;
-            const currentPrice = mids[position.coin] || 0;
+            const currentPrice = parseFloat(mids[position.coin] || "0");
             const liquidationPrice = parseFloat(position.liquidationPx || "0");
             const size = parseFloat(position.szi || "0");
             

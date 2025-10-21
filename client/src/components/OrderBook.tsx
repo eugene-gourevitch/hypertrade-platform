@@ -1,6 +1,9 @@
-import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
+
+const HYPERLIQUID_API_URL = import.meta.env.VITE_HYPERLIQUID_TESTNET === "true"
+  ? "https://api.hyperliquid-testnet.xyz"
+  : "https://api.hyperliquid.xyz";
 
 interface OrderBookProps {
   coin: string;
@@ -9,19 +12,42 @@ interface OrderBookProps {
 
 export function OrderBook({ coin, className }: OrderBookProps) {
   const [selectedCoin, setSelectedCoin] = useState(coin);
+  const [orderBook, setOrderBook] = useState<any>(null);
 
   useEffect(() => {
     setSelectedCoin(coin);
   }, [coin]);
 
-  const { data: orderBook } = trpc.market.getL2Snapshot.useQuery(
-    { coin: selectedCoin },
-    {
-      refetchInterval: 5000, // Update every 5 seconds
-      refetchIntervalInBackground: false,
-      enabled: !!selectedCoin,
-    }
-  );
+  // Fetch order book data client-side
+  useEffect(() => {
+    if (!selectedCoin) return;
+
+    const fetchOrderBook = async () => {
+      try {
+        const res = await fetch(`${HYPERLIQUID_API_URL}/info`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "l2Book",
+            coin: selectedCoin,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch order book: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        setOrderBook(data);
+      } catch (err) {
+        console.error("[OrderBook] Error:", err);
+      }
+    };
+
+    fetchOrderBook();
+    const interval = setInterval(fetchOrderBook, 5000);
+    return () => clearInterval(interval);
+  }, [selectedCoin]);
 
   if (!orderBook || !orderBook.levels || orderBook.levels.length < 2) {
     return (
@@ -40,8 +66,8 @@ export function OrderBook({ coin, className }: OrderBookProps) {
   const asks = orderBook.levels[1] || [];
 
   // Calculate max size for depth visualization
-  const maxBidSize = Math.max(...bids.map((b) => parseFloat(b.sz)), 0);
-  const maxAskSize = Math.max(...asks.map((a) => parseFloat(a.sz)), 0);
+  const maxBidSize = Math.max(...bids.map((b: any) => parseFloat(b.sz)), 0);
+  const maxAskSize = Math.max(...asks.map((a: any) => parseFloat(a.sz)), 0);
   const maxSize = Math.max(maxBidSize, maxAskSize);
 
   // Calculate spread
@@ -73,7 +99,7 @@ export function OrderBook({ coin, className }: OrderBookProps) {
             {asks
               .slice(0, 10)
               .reverse()
-              .map((ask, idx) => {
+              .map((ask: any, idx: number) => {
                 const size = parseFloat(ask.sz);
                 askTotal += size;
                 const depthPercent = (size / maxSize) * 100;
@@ -110,7 +136,7 @@ export function OrderBook({ coin, className }: OrderBookProps) {
 
           {/* Bids (Buy orders) - Show top 10 */}
           <div className="flex-1 overflow-y-auto">
-            {bids.slice(0, 10).map((bid, idx) => {
+            {bids.slice(0, 10).map((bid: any, idx: number) => {
               const size = parseFloat(bid.sz);
               bidTotal += size;
               const depthPercent = (size / maxSize) * 100;
