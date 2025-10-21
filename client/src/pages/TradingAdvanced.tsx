@@ -453,7 +453,7 @@ export default function TradingAdvanced() {
                   variant="outline"
                   className="w-full"
                   onClick={handleUpdateLeverage}
-                  disabled={updateLeverageMutation.isPending}
+                  disabled={hyperliquid.status.isLoading}
                 >
                   Update Leverage
                 </Button>
@@ -549,15 +549,11 @@ export default function TradingAdvanced() {
                     className="w-full"
                     variant={side === "buy" ? "default" : "destructive"}
                     onClick={handlePlaceOrder}
-                    disabled={
-                      placeMarketOrder.isPending ||
-                      placeLimitOrder.isPending ||
-                      placeStopLoss.isPending ||
-                      placeTakeProfit.isPending ||
-                      placeBracketOrder.isPending
-                    }
+                    disabled={hyperliquid.status.isLoading}
                   >
-                    {orderType === "bracket"
+                    {hyperliquid.status.isLoading
+                      ? "Processing..."
+                      : orderType === "bracket"
                       ? "Place Bracket Order"
                       : `${side === "buy" ? "Buy" : "Sell"} ${selectedCoin}`}
                   </Button>

@@ -30,7 +30,7 @@ export function MarketTicker() {
     // Calculate price changes
     const changes: Record<string, PriceChange> = {};
 
-    Object.entries(mids).forEach(([coin, price]) => {
+    Object.entries(mids).forEach(([coin, price]: [string, any]) => {
       const current = parseFloat(price);
       const previous = parseFloat(previousMidsRef.current[coin] || price);
       const change = current - previous;

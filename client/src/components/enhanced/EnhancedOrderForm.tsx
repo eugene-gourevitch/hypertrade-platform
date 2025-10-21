@@ -271,7 +271,7 @@ export function EnhancedOrderForm({
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!size || placeMarketOrder.isPending}
+            disabled={!size || hyperliquid.status.isLoading}
             className={cn(
               "w-full py-6 text-base font-semibold",
               side === "buy"
@@ -279,7 +279,7 @@ export function EnhancedOrderForm({
                 : "bg-red-500 hover:bg-red-600 text-white"
             )}
           >
-            {placeMarketOrder.isPending ? (
+            {hyperliquid.status.isLoading ? (
               "Placing..."
             ) : (
               <>
@@ -387,7 +387,7 @@ export function EnhancedOrderForm({
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!size || !limitPrice || placeLimitOrder.isPending}
+            disabled={!size || !limitPrice || hyperliquid.status.isLoading}
             className={cn(
               "w-full py-6 text-base font-semibold",
               side === "buy"
@@ -395,7 +395,7 @@ export function EnhancedOrderForm({
                 : "bg-red-500 hover:bg-red-600 text-white"
             )}
           >
-            {placeLimitOrder.isPending ? (
+            {hyperliquid.status.isLoading ? (
               "Placing..."
             ) : (
               <>
@@ -528,7 +528,7 @@ export function EnhancedOrderForm({
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!size || !limitPrice || !stopLossPrice || !takeProfitPrice || placeBracketOrder.isPending}
+            disabled={!size || !limitPrice || !stopLossPrice || !takeProfitPrice || hyperliquid.status.isLoading}
             className={cn(
               "w-full py-6 text-base font-semibold",
               side === "buy"
@@ -536,7 +536,7 @@ export function EnhancedOrderForm({
                 : "bg-red-500 hover:bg-red-600 text-white"
             )}
           >
-            {placeBracketOrder.isPending ? (
+            {hyperliquid.status.isLoading ? (
               "Placing..."
             ) : (
               <>

@@ -33,12 +33,12 @@ export function LiveMarketStats() {
   useEffect(() => {
     if (!mids || Object.keys(mids).length === 0) return;
 
-    const prices = Object.values(mids).map((p) => parseFloat(p));
+    const prices = Object.values(mids).map((p: any) => parseFloat(p));
     const totalAssets = Object.keys(mids).length;
     const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
 
     // Calculate real price changes from previous values
-    const changes = Object.entries(mids).map(([coin, price]) => {
+    const changes = Object.entries(mids).map(([coin, price]: [string, any]) => {
       const current = parseFloat(price);
       const previous = parseFloat(previousMids[coin] || price);
       const change = previous !== 0 ? ((current - previous) / previous) * 100 : 0;
