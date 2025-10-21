@@ -15,7 +15,7 @@ const nonces = new Map<string, { nonce: string; timestamp: number }>();
 setInterval(() => {
   const now = Date.now();
   const fiveMinutes = 5 * 60 * 1000;
-  for (const [address, data] of nonces.entries()) {
+  for (const [address, data] of Array.from(nonces.entries())) {
     if (now - data.timestamp > fiveMinutes) {
       nonces.delete(address);
     }
@@ -24,12 +24,12 @@ setInterval(() => {
 
 export function registerWalletAuthRoutes(app: Express) {
   /**
-   * GET /api/auth/nonce
+   * POST /api/auth/nonce
    * Generate a nonce for wallet signature
    */
-  app.get("/api/auth/nonce", async (req: Request, res: Response) => {
+  app.post("/api/auth/nonce", async (req: Request, res: Response) => {
     try {
-      const address = req.query.address as string;
+      const address = req.body.address as string;
 
       if (!address || typeof address !== 'string') {
         res.status(400).json({ error: "Wallet address is required" });
