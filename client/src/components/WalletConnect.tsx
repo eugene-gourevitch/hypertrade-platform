@@ -1,133 +1,237 @@
-import { useState } from 'react';
-import { useAccount, useConnect, useSignMessage, useDisconnect } from 'wagmi';
-import axios from 'axios';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+/**
+ * MetaMask Wallet Connection Component
+ * Web3 wallet authentication
+ */
 
-export function WalletConnect() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
-  const { signMessageAsync } = useSignMessage();
-  const { disconnect } = useDisconnect();
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import { Wallet, CheckCircle, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-  const handleConnect = async (connectorIndex: number) => {
-    try {
-      const connector = connectors[connectorIndex];
-      if (!connector) {
-        toast.error('Connector not available');
-        return;
-      }
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
-      // Connect wallet
-      connect({ connector });
-    } catch (error) {
-      console.error('Failed to connect wallet:', error);
-      toast.error('Failed to connect wallet');
+interface WalletConnectProps {
+  onConnected?: (address: string) => void;
+}
+
+export function WalletConnect({ onConnected }: WalletConnectProps) {
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [hasMetaMask, setHasMetaMask] = useState(false);
+
+  useEffect(() => {
+    // Check if MetaMask is installed
+    setHasMetaMask(typeof window.ethereum !== 'undefined');
+    
+    // Check if already connected
+    if (window.ethereum) {
+      window.ethereum.request({ method: 'eth_accounts' })
+        .then((accounts: string[]) => {
+          if (accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+          }
+        })
+        .catch(console.error);
+
+      // Listen for account changes
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setWalletAddress(accounts[0]);
+        } else {
+          setWalletAddress(null);
+        }
+      });
+
+      // Listen for chain changes
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
     }
-  };
 
-  const handleAuthenticate = async () => {
-    if (!address) {
-      toast.error('Please connect your wallet first');
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners('accountsChanged');
+        window.ethereum.removeAllListeners('chainChanged');
+      }
+    };
+  }, []);
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      toast.error("MetaMask not installed", {
+        description: "Please install MetaMask to continue",
+        action: {
+          label: "Install",
+          onClick: () => window.open("https://metamask.io/download/", "_blank"),
+        },
+      });
       return;
     }
 
-    setIsAuthenticating(true);
+    setIsConnecting(true);
 
     try {
-      // Step 1: Get nonce from server
-      const { data: nonceData } = await axios.get(`/api/auth/nonce?address=${address}`);
-      const { nonce, message } = nonceData;
-
-      // Step 2: Sign the message
-      const signature = await signMessageAsync({ message });
-
-      // Step 3: Verify signature and create session
-      const { data: verifyData } = await axios.post('/api/auth/verify', {
-        address,
-        signature,
-        message,
+      // Request account access
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
       });
 
-      if (verifyData.success) {
-        toast.success('Successfully authenticated!');
-        // Reload page to update auth state
+      const address = accounts[0];
+      setWalletAddress(address);
+
+      // Get nonce from server
+      const nonceRes = await fetch('/api/auth/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+
+      if (!nonceRes.ok) {
+        throw new Error('Failed to get nonce');
+      }
+
+      const { message, nonce } = await nonceRes.json();
+
+      // Sign message with MetaMask
+      const signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [message, address],
+      });
+
+      // Verify signature on server
+      const verifyRes = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ address, signature, nonce }),
+      });
+
+      if (!verifyRes.ok) {
+        const errorData = await verifyRes.json();
+        throw new Error(errorData.message || 'Authentication failed');
+      }
+
+      const { success } = await verifyRes.json();
+
+      if (success) {
+        toast.success("✅ Wallet connected successfully!");
+        onConnected?.(address);
+        // Redirect to trading page
         window.location.href = '/trade';
-      } else {
-        toast.error('Authentication failed');
       }
     } catch (error: any) {
-      console.error('Authentication failed:', error);
-      toast.error(error.response?.data?.error || 'Authentication failed');
+      console.error("[WalletAuth] Connection failed:", error);
+      
+      if (error.code === 4001) {
+        toast.error("Connection rejected", {
+          description: "You rejected the connection request",
+        });
+      } else if (error.message.includes('Only') || error.message.includes('authorized')) {
+        toast.error("Access Denied", {
+          description: error.message,
+        });
+      } else {
+        toast.error("Connection failed", {
+          description: error.message || "Please try again",
+        });
+      }
     } finally {
-      setIsAuthenticating(false);
+      setIsConnecting(false);
     }
   };
 
-  const handleDisconnect = () => {
-    disconnect();
+  const disconnectWallet = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      setWalletAddress(null);
+      toast.success("Wallet disconnected");
+      window.location.href = '/';
+    } catch (error) {
+      console.error("[WalletAuth] Logout failed:", error);
+    }
   };
 
-  if (isConnected && address) {
+  if (!hasMetaMask) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="text-sm">
-          <p className="text-muted-foreground mb-2">Connected Wallet</p>
-          <p className="font-mono text-sm bg-secondary p-3 rounded">
-            {address.slice(0, 6)}...{address.slice(-4)}
-          </p>
+      <Card className="p-6 bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20">
+        <div className="flex items-start gap-3">
+          <XCircle className="h-5 w-5 text-orange-500 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-white mb-1">MetaMask Required</h3>
+            <p className="text-sm text-gray-400 mb-3">
+              Please install MetaMask to connect your wallet and access the trading platform.
+            </p>
+            <Button
+              onClick={() => window.open("https://metamask.io/download/", "_blank")}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              Install MetaMask
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
+      </Card>
+    );
+  }
+
+  if (walletAddress) {
+    return (
+      <Card className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            <div>
+              <div className="text-xs text-gray-400">Connected Wallet</div>
+              <div className="font-mono text-sm text-white">
+                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              </div>
+            </div>
+          </div>
           <Button
-            onClick={handleAuthenticate}
-            disabled={isAuthenticating}
-            className="flex-1"
-          >
-            {isAuthenticating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </Button>
-          <Button
-            onClick={handleDisconnect}
+            onClick={disconnectWallet}
             variant="outline"
+            size="sm"
+            className="border-gray-700 text-gray-400 hover:text-white"
           >
             Disconnect
           </Button>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground mb-2">Connect your wallet to continue</p>
-      {connectors.map((connector, index) => (
+    <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20">
+      <div className="text-center">
+        <Wallet className="h-12 w-12 text-blue-500 mx-auto mb-3" />
+        <h3 className="font-semibold text-white mb-2">Connect Your Wallet</h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Sign in with MetaMask to access professional trading features
+        </p>
         <Button
-          key={connector.id}
-          onClick={() => handleConnect(index)}
+          onClick={connectWallet}
           disabled={isConnecting}
-          variant="outline"
-          className="w-full"
+          className="w-full bg-blue-500 hover:bg-blue-600"
         >
           {isConnecting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Connecting...
-            </>
+            "Connecting..."
           ) : (
             <>
-              {connector.name === 'Injected' ? 'MetaMask / Browser Wallet' : connector.name}
+              <Wallet className="mr-2 h-4 w-4" />
+              Connect MetaMask
             </>
           )}
         </Button>
-      ))}
-    </div>
+      </div>
+    </Card>
   );
 }

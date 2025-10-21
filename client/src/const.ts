@@ -6,8 +6,7 @@ export const APP_LOGO =
   import.meta.env.VITE_APP_LOGO ||
   "https://placehold.co/128x128/E1E7EF/1F2937?text=App";
 
-// Generate Google OAuth login URL
+// Wallet authentication - no login URL needed
 export const getLoginUrl = () => {
-  // Use our own Google OAuth endpoint
-  return "/api/oauth/login";
+  return "/"; // MetaMask auth happens client-side
 };

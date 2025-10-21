@@ -88,4 +88,5 @@ function TradingViewChart({ symbol, theme = "dark" }: TradingViewChartProps) {
 }
 
 export default memo(TradingViewChart);
+export { TradingViewChart };
 
