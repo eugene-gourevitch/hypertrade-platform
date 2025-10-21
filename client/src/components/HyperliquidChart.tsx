@@ -1,4 +1,6 @@
 import { useEffect, useRef, memo } from "react";
+import { trpc } from "@/lib/trpc";
+import { createHyperliquidDatafeed } from "@/lib/hyperliquid-datafeed";
 
 interface HyperliquidChartProps {
   symbol: string;
@@ -7,53 +9,82 @@ interface HyperliquidChartProps {
 
 function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
   const container = useRef<HTMLDivElement>(null);
+  const tvWidget = useRef<any>(null);
+  const trpcUtils = trpc.useUtils();
 
   useEffect(() => {
     if (!container.current) return;
 
-    // Map Hyperliquid symbols to Binance symbols for TradingView
-    const symbolMap: Record<string, string> = {
-      "BTC": "BTCUSDT",
-      "ETH": "ETHUSDT",
-      "SOL": "SOLUSDT",
-      "HYPE": "BTCUSDT", // Fallback to BTC for tokens not on Binance
-      "ASTER": "BTCUSDT",
-    };
-
-    const tvSymbol = symbolMap[symbol] || "BTCUSDT";
-
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.async = true;
-    script.onload = () => {
-      if (window.TradingView) {
-        new window.TradingView.widget({
-          autosize: true,
-          symbol: `BINANCE:${tvSymbol}`,
-          interval: interval,
-          timezone: "Etc/UTC",
-          theme: "dark",
-          style: "1",
-          locale: "en",
-          toolbar_bg: "#0a0a0a",
-          enable_publishing: false,
-          hide_top_toolbar: false,
-          hide_legend: false,
-          save_image: false,
-          container_id: container.current!.id,
-          studies: ["Volume@tv-basicstudies"],
-        });
+    const loadTradingView = () => {
+      if (!window.TradingView) {
+        const script = document.createElement("script");
+        script.src = "https://s3.tradingview.com/tv.js";
+        script.async = true;
+        script.onload = initWidget;
+        document.head.appendChild(script);
+      } else {
+        initWidget();
       }
     };
 
-    document.head.appendChild(script);
+    const initWidget = () => {
+      if (!window.TradingView || !container.current) return;
+
+      // Clean up previous widget
+      if (tvWidget.current) {
+        tvWidget.current.remove();
+        tvWidget.current = null;
+      }
+
+      const widgetOptions = {
+        symbol: `HYPERLIQUID:${symbol}USDC`,
+        datafeed: createHyperliquidDatafeed(trpcUtils),
+        interval: interval,
+        container: container.current,
+        library_path: "/charting_library/",
+        locale: "en",
+        disabled_features: ["use_localstorage_for_settings"],
+        enabled_features: ["study_templates"],
+        fullscreen: false,
+        autosize: true,
+        theme: "dark",
+        toolbar_bg: "#0a0a0a",
+        overrides: {
+          "paneProperties.background": "#0a0a0a",
+          "paneProperties.backgroundType": "solid",
+          "mainSeriesProperties.candleStyle.upColor": "#22c55e",
+          "mainSeriesProperties.candleStyle.downColor": "#ef4444",
+          "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
+          "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
+          "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
+          "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+        },
+        studies_overrides: {},
+        time_frames: [
+          { text: "1h", resolution: "1", description: "1 Hour" },
+          { text: "4h", resolution: "15", description: "4 Hours" },
+          { text: "1d", resolution: "60", description: "1 Day" },
+          { text: "1w", resolution: "240", description: "1 Week" },
+          { text: "1m", resolution: "1D", description: "1 Month" },
+        ],
+      };
+
+      try {
+        tvWidget.current = new window.TradingView.widget(widgetOptions);
+      } catch (error) {
+        console.error("[HyperliquidChart] Error initializing TradingView widget:", error);
+      }
+    };
+
+    loadTradingView();
 
     return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
+      if (tvWidget.current) {
+        tvWidget.current.remove();
+        tvWidget.current = null;
       }
     };
-  }, [symbol, interval]);
+  }, [symbol, interval, trpcUtils]);
 
   return (
     <div className="relative w-full h-full">
@@ -67,4 +98,3 @@ function HyperliquidChart({ symbol, interval }: HyperliquidChartProps) {
 }
 
 export default memo(HyperliquidChart);
-

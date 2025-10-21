@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { hyperliquidWS } from "../hyperliquid_websocket";
+import { startLiquidationMonitor } from "../liquidation_monitor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -69,19 +70,27 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    
+
     // Initialize WebSocket connections
     console.log('[Server] Initializing Hyperliquid WebSocket...');
     hyperliquidWS.subscribeAllMids();
-    
+
     // Log WebSocket events
     hyperliquidWS.on('connected', () => {
       console.log('[Server] ✅ WebSocket connected and subscribed');
     });
-    
+
     hyperliquidWS.on('error', (error) => {
       console.error('[Server] WebSocket error:', error.message);
     });
+
+    // Start liquidation monitoring service
+    if (process.env.ENABLE_LIQUIDATION_ALERTS === "true") {
+      console.log('[Server] Starting liquidation monitor...');
+      startLiquidationMonitor();
+    } else {
+      console.log('[Server] Liquidation alerts disabled (set ENABLE_LIQUIDATION_ALERTS=true to enable)');
+    }
   });
 }
 

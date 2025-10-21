@@ -85,6 +85,16 @@ export async function getUser(id: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get users: database not available");
+    return [];
+  }
+
+  return await db.select().from(users);
+}
+
 // Trading queries
 export async function saveTrade(trade: InsertTrade): Promise<void> {
   const db = await getDb();

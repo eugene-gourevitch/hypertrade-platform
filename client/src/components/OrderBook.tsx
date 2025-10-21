@@ -1,9 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useState } from "react";
-
-const HYPERLIQUID_API_URL = import.meta.env.VITE_HYPERLIQUID_TESTNET === "true"
-  ? "https://api.hyperliquid-testnet.xyz"
-  : "https://api.hyperliquid.xyz";
+import { useL2Book } from "@/hooks/useWebSocket";
+import { BookOpen } from "lucide-react";
+import { useState } from "react";
 
 interface OrderBookProps {
   coin: string;
@@ -11,52 +9,25 @@ interface OrderBookProps {
 }
 
 export function OrderBook({ coin, className }: OrderBookProps) {
-  const [selectedCoin, setSelectedCoin] = useState(coin);
-  const [orderBook, setOrderBook] = useState<any>(null);
-
-  useEffect(() => {
-    setSelectedCoin(coin);
-  }, [coin]);
-
-  // Fetch order book data client-side
-  useEffect(() => {
-    if (!selectedCoin) return;
-
-    const fetchOrderBook = async () => {
-      try {
-        const res = await fetch(`${HYPERLIQUID_API_URL}/info`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "l2Book",
-            coin: selectedCoin,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error(`Failed to fetch order book: ${res.statusText}`);
-        }
-
-        const data = await res.json();
-        setOrderBook(data);
-      } catch (err) {
-        console.error("[OrderBook] Error:", err);
-      }
-    };
-
-    fetchOrderBook();
-    const interval = setInterval(fetchOrderBook, 5000);
-    return () => clearInterval(interval);
-  }, [selectedCoin]);
+  const { orderBook, isConnected } = useL2Book(coin);
+  const [precision, setPrecision] = useState(2);
 
   if (!orderBook || !orderBook.levels || orderBook.levels.length < 2) {
     return (
-      <Card className="h-full">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Order Book</CardTitle>
+      <Card className={`h-full flex flex-col ${className || ""}`}>
+        <CardHeader className="pb-2 border-b">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Order Book
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground">Loading order book...</div>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center py-12">
+            <BookOpen className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+            <div className="text-sm text-muted-foreground">
+              {isConnected ? "Loading order book..." : "Connecting..."}
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -83,39 +54,67 @@ export function OrderBook({ coin, className }: OrderBookProps) {
   return (
     <Card className={`h-full flex flex-col ${className || ""}`}>
       <CardHeader className="pb-2 border-b">
-        <CardTitle className="text-sm font-medium">Order Book</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Order Book
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <select
+              value={precision}
+              onChange={(e) => setPrecision(Number(e.target.value))}
+              className="text-xs bg-background border border-border rounded px-2 py-1"
+            >
+              <option value={0}>0.01</option>
+              <option value={1}>0.1</option>
+              <option value={2}>1</option>
+              <option value={3}>10</option>
+            </select>
+            {isConnected && (
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-500">LIVE</span>
+              </div>
+            )}
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="flex-1 p-0 overflow-hidden">
+      <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
         <div className="flex flex-col h-full text-xs">
           {/* Header */}
-          <div className="grid grid-cols-3 gap-2 px-3 py-2 border-b text-muted-foreground font-medium">
+          <div className="grid grid-cols-3 gap-2 px-3 py-2 border-b text-muted-foreground font-medium bg-accent/5">
             <div className="text-left">Price</div>
             <div className="text-right">Size</div>
             <div className="text-right">Total</div>
           </div>
 
-          {/* Asks (Sell orders) - Show top 10 in reverse */}
-          <div className="flex-1 overflow-y-auto">
+          {/* Asks (Sell orders) - Show top 15 in reverse */}
+          <div className="flex-1 overflow-y-auto flex flex-col-reverse">
             {asks
-              .slice(0, 10)
-              .reverse()
+              .slice(0, 15)
               .map((ask: any, idx: number) => {
                 const size = parseFloat(ask.sz);
                 askTotal += size;
                 const depthPercent = (size / maxSize) * 100;
+                const price = parseFloat(ask.px);
 
                 return (
                   <div
                     key={`ask-${idx}`}
-                    className="grid grid-cols-3 gap-2 px-3 py-1 relative hover:bg-accent/50 cursor-pointer"
+                    className="grid grid-cols-3 gap-2 px-3 py-1 relative hover:bg-red-500/5 cursor-pointer transition-colors group"
                   >
+                    {/* Depth visualization */}
                     <div
-                      className="absolute right-0 top-0 bottom-0 bg-red-500/10"
+                      className="absolute right-0 top-0 bottom-0 bg-red-500/10 group-hover:bg-red-500/15 transition-colors"
                       style={{ width: `${depthPercent}%` }}
                     />
-                    <div className="text-red-500 relative z-10">{parseFloat(ask.px).toFixed(1)}</div>
-                    <div className="text-right relative z-10">{size.toFixed(4)}</div>
-                    <div className="text-right text-muted-foreground relative z-10">
+                    <div className="text-red-500 font-mono relative z-10">
+                      {price.toFixed(precision)}
+                    </div>
+                    <div className="text-right font-mono relative z-10">
+                      {size.toFixed(4)}
+                    </div>
+                    <div className="text-right text-muted-foreground font-mono relative z-10 text-[10px]">
                       {askTotal.toFixed(4)}
                     </div>
                   </div>
@@ -124,35 +123,56 @@ export function OrderBook({ coin, className }: OrderBookProps) {
           </div>
 
           {/* Spread */}
-          <div className="border-y bg-accent/30 px-3 py-2">
+          <div className="border-y bg-accent/20 px-3 py-2.5">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Spread</span>
+              <div>
+                <div className="text-lg font-bold font-mono text-green-500">
+                  ${bestBid.toFixed(precision)}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  Best Bid
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-xs">${spread.toFixed(2)}</div>
+                <div className="text-[10px] text-muted-foreground">{spreadPercent}%</div>
+              </div>
               <div className="text-right">
-                <div className="font-medium">{spread.toFixed(1)}</div>
-                <div className="text-xs text-muted-foreground">{spreadPercent}%</div>
+                <div className="text-lg font-bold font-mono text-red-500">
+                  ${bestAsk.toFixed(precision)}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  Best Ask
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Bids (Buy orders) - Show top 10 */}
+          {/* Bids (Buy orders) - Show top 15 */}
           <div className="flex-1 overflow-y-auto">
-            {bids.slice(0, 10).map((bid: any, idx: number) => {
+            {bids.slice(0, 15).map((bid: any, idx: number) => {
               const size = parseFloat(bid.sz);
               bidTotal += size;
               const depthPercent = (size / maxSize) * 100;
+              const price = parseFloat(bid.px);
 
               return (
                 <div
                   key={`bid-${idx}`}
-                  className="grid grid-cols-3 gap-2 px-3 py-1 relative hover:bg-accent/50 cursor-pointer"
+                  className="grid grid-cols-3 gap-2 px-3 py-1 relative hover:bg-green-500/5 cursor-pointer transition-colors group"
                 >
+                  {/* Depth visualization */}
                   <div
-                    className="absolute right-0 top-0 bottom-0 bg-green-500/10"
+                    className="absolute right-0 top-0 bottom-0 bg-green-500/10 group-hover:bg-green-500/15 transition-colors"
                     style={{ width: `${depthPercent}%` }}
                   />
-                  <div className="text-green-500 relative z-10">{parseFloat(bid.px).toFixed(1)}</div>
-                  <div className="text-right relative z-10">{size.toFixed(4)}</div>
-                  <div className="text-right text-muted-foreground relative z-10">
+                  <div className="text-green-500 font-mono relative z-10">
+                    {price.toFixed(precision)}
+                  </div>
+                  <div className="text-right font-mono relative z-10">
+                    {size.toFixed(4)}
+                  </div>
+                  <div className="text-right text-muted-foreground font-mono relative z-10 text-[10px]">
                     {bidTotal.toFixed(4)}
                   </div>
                 </div>
@@ -164,4 +184,3 @@ export function OrderBook({ coin, className }: OrderBookProps) {
     </Card>
   );
 }
-
