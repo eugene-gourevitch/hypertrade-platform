@@ -102,8 +102,8 @@ export function useWallet() {
         ...prev,
         chainId: parseInt(chainId, 16),
       }));
-      // Reload to avoid state issues
-      window.location.reload();
+      // Don't auto-reload - let user stay on the page
+      // window.location.reload();
     };
 
     if (window.ethereum?.on && window.ethereum?.removeListener) {
