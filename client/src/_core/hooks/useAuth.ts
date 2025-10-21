@@ -19,9 +19,27 @@ export function useAuth(options?: UseAuthOptions) {
 
   useEffect(() => {
     // Check localStorage for wallet address
-    const savedAddress = localStorage.getItem('wallet_address');
-    setWalletAddress(savedAddress);
-    setIsCheckingWallet(false);
+    const checkWallet = () => {
+      const savedAddress = localStorage.getItem('wallet_address');
+      setWalletAddress(savedAddress);
+      setIsCheckingWallet(false);
+    };
+
+    checkWallet();
+
+    // Listen for storage events (wallet connect/disconnect)
+    window.addEventListener('storage', checkWallet);
+
+    // Also listen for custom event from wallet hook
+    const handleWalletChange = () => {
+      checkWallet();
+    };
+    window.addEventListener('walletChanged', handleWalletChange);
+
+    return () => {
+      window.removeEventListener('storage', checkWallet);
+      window.removeEventListener('walletChanged', handleWalletChange);
+    };
   }, []);
 
   // Try server auth first, fallback to localStorage

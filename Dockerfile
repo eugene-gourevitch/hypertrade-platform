@@ -54,6 +54,9 @@ COPY --from=base /app/package.json ./
 COPY --from=base /app/server ./server
 COPY --from=base /app/drizzle ./drizzle
 
+# Copy Python daemon to dist directory (required by hyperliquid_persistent.ts)
+COPY --from=base /app/server/hyperliquid_daemon.py ./dist/hyperliquid_daemon.py
+
 # Cloud Run expects PORT environment variable
 ENV PORT=8080
 ENV NODE_ENV=production
