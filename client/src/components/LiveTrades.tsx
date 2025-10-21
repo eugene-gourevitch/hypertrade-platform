@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTrades } from "@/hooks/useWebSocket";
+import { useTradesDirect } from "@/hooks/useHyperliquidMarket";
 import { Activity } from "lucide-react";
 
 interface LiveTradesProps {
@@ -8,7 +8,7 @@ interface LiveTradesProps {
 }
 
 export default function LiveTrades({ symbol, className }: LiveTradesProps) {
-  const { trades, isConnected } = useTrades(symbol);
+  const { trades, isConnected } = useTradesDirect(symbol);
 
   return (
     <Card className={className}>

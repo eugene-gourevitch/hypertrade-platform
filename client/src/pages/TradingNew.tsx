@@ -12,7 +12,7 @@ import HyperliquidChart from "@/components/HyperliquidChart";
 import { useWallet } from "@/hooks/useWallet";
 import { useHyperliquid } from "@/hooks/useHyperliquid";
 import { useHyperliquidAccount, useHyperliquidMeta, useHyperliquidMids } from "@/hooks/useHyperliquidAccount";
-import { useAllMids } from "@/hooks/useWebSocket";
+import { useAllMidsDirect } from "@/hooks/useHyperliquidMarket";
 import { OrderBook } from "@/components/OrderBook";
 import LiveTrades from "@/components/LiveTrades";
 import { TPSLOrderEntry } from "@/components/trading/TPSLOrderEntry";
@@ -38,10 +38,10 @@ export default function TradingNew() {
   // Fetch market data
   const { meta } = useHyperliquidMeta();
   const { mids: staticMids } = useHyperliquidMids({ refetchInterval: 5000 });
-  const { mids: wsMids, isConnected: wsConnected } = useAllMids();
+  const { mids: directMids, isConnected: directConnected } = useAllMidsDirect();
 
-  // Use WebSocket mids if available, fallback to static
-  const mids = wsConnected && wsMids ? wsMids : staticMids;
+  // Use direct API mids if available, fallback to static
+  const mids = directConnected && Object.keys(directMids).length > 0 ? directMids : staticMids;
 
   // Fetch account data
   const {
@@ -167,7 +167,7 @@ export default function TradingNew() {
             <div className="text-2xl font-bold font-mono">
               ${parseFloat(currentPrice).toFixed(2)}
             </div>
-            {wsConnected && (
+            {directConnected && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-xs text-green-500">LIVE</span>
@@ -250,7 +250,7 @@ export default function TradingNew() {
 
               <div className="flex-1 overflow-auto">
                 <TabsContent value="balances" className="m-0 h-full">
-                  <BalancesTab userState={userState} mids={mids} />
+                  <BalancesTab userState={userState} mids={mids || undefined} />
                 </TabsContent>
 
                 <TabsContent value="open-orders" className="m-0 h-full">
@@ -276,7 +276,7 @@ export default function TradingNew() {
                 <TabsContent value="ai-assistant" className="m-0 h-full p-4">
                   <AIRecommendations
                     userState={userState}
-                    mids={mids}
+                    mids={mids || undefined}
                     selectedCoin={selectedCoin}
                   />
                 </TabsContent>

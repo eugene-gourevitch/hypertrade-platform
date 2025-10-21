@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useL2Book } from "@/hooks/useWebSocket";
+import { useL2BookDirect } from "@/hooks/useHyperliquidMarket";
 import { BookOpen } from "lucide-react";
 import { useState } from "react";
 
@@ -9,7 +9,7 @@ interface OrderBookProps {
 }
 
 export function OrderBook({ coin, className }: OrderBookProps) {
-  const { orderBook, isConnected } = useL2Book(coin);
+  const { orderBook, isConnected } = useL2BookDirect(coin);
   const [precision, setPrecision] = useState(2);
 
   if (!orderBook || !orderBook.levels || orderBook.levels.length < 2) {
