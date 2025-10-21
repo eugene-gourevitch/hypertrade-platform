@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { useHyperliquid } from "@/hooks/useHyperliquid";
 import { toast } from "sonner";
 import { X, XCircle } from "lucide-react";
 
@@ -41,30 +41,27 @@ interface OpenOrdersTableProps {
 
 export function OpenOrdersTable({ orders, currentPrices, onRefresh }: OpenOrdersTableProps) {
   const [selectedCoin, setSelectedCoin] = useState<string | null>(null);
+  const hyperliquid = useHyperliquid();
 
-  const cancelOrder = trpc.trading.cancelOrder.useMutation({
-    onSuccess: () => {
-      toast.success("✅ Order cancelled");
+  const handleCancelOrder = async (coin: string, oid: number) => {
+    try {
+      await hyperliquid.cancelOrder({ coin, oid });
       onRefresh?.();
-    },
-    onError: (error) => toast.error(`❌ Cancel failed: ${error.message}`),
-  });
-
-  const cancelAllOrders = trpc.trading.cancelAllOrders.useMutation({
-    onSuccess: () => {
-      toast.success("✅ All orders cancelled");
-      setSelectedCoin(null);
-      onRefresh?.();
-    },
-    onError: (error) => toast.error(`❌ Cancel all failed: ${error.message}`),
-  });
-
-  const handleCancelOrder = (coin: string, oid: number) => {
-    cancelOrder.mutate({ coin, oid });
+    } catch (error) {
+      // Error already handled in hook
+      console.error("Cancel order error:", error);
+    }
   };
 
-  const handleCancelAll = (coin: string) => {
-    cancelAllOrders.mutate({ coin });
+  const handleCancelAll = async (coin: string) => {
+    try {
+      await hyperliquid.cancelAllOrders(coin);
+      setSelectedCoin(null);
+      onRefresh?.();
+    } catch (error) {
+      // Error already handled in hook
+      console.error("Cancel all error:", error);
+    }
   };
 
   if (!orders || orders.length === 0) {

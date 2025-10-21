@@ -67,15 +67,18 @@ export const appRouter = router({
   // Account endpoints (protected)
   account: router({
     getUserState: protectedProcedure.query(async ({ ctx }) => {
-      return await hyperliquidPersistent.getUserState();
+      // Use the connected wallet address to fetch positions
+      return await hyperliquidPersistent.getUserState(ctx.user.id);
     }),
 
     getOpenOrders: protectedProcedure.query(async ({ ctx }) => {
-      return await hyperliquidPersistent.getOpenOrders();
+      // Use the connected wallet address to fetch open orders
+      return await hyperliquidPersistent.getOpenOrders(ctx.user.id);
     }),
 
     getUserFills: protectedProcedure.query(async ({ ctx }) => {
-      return await hyperliquidPersistent.getUserFills();
+      // Use the connected wallet address to fetch trade fills
+      return await hyperliquidPersistent.getUserFills(ctx.user.id);
     }),
 
     getSettings: protectedProcedure.query(async ({ ctx }) => {

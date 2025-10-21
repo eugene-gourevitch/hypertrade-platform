@@ -3,7 +3,7 @@
  * Real-time market metrics displayed in Bloomberg-style cards
  */
 
-import { useAllMids } from "@/hooks/useWebSocket";
+import { trpc } from "@/lib/trpc";
 import { Activity, TrendingUp, Zap, DollarSign } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -15,7 +15,12 @@ interface MarketMetrics {
 }
 
 export function LiveMarketStats() {
-  const { mids, isConnected } = useAllMids();
+  // Use polling instead of WebSocket subscriptions for homepage
+  const { data: mids, isSuccess } = trpc.market.getAllMids.useQuery(undefined, {
+    refetchInterval: 2000, // Poll every 2 seconds
+    refetchIntervalInBackground: true,
+  });
+
   const [metrics, setMetrics] = useState<MarketMetrics>({
     totalAssets: 0,
     avgPrice: 0,
@@ -24,7 +29,7 @@ export function LiveMarketStats() {
   });
 
   useEffect(() => {
-    if (!isConnected || Object.keys(mids).length === 0) return;
+    if (!mids || Object.keys(mids).length === 0) return;
 
     const prices = Object.values(mids).map((p) => parseFloat(p));
     const totalAssets = Object.keys(mids).length;
@@ -46,7 +51,7 @@ export function LiveMarketStats() {
       topGainer,
       topLoser,
     });
-  }, [mids, isConnected]);
+  }, [mids]);
 
   const stats = [
     {
@@ -78,12 +83,12 @@ export function LiveMarketStats() {
     {
       icon: Zap,
       label: "Market Status",
-      value: isConnected ? "LIVE" : "OFFLINE",
-      color: isConnected ? "text-yellow-400" : "text-gray-500",
-      bgGradient: isConnected
+      value: isSuccess ? "LIVE" : "OFFLINE",
+      color: isSuccess ? "text-yellow-400" : "text-gray-500",
+      bgGradient: isSuccess
         ? "from-yellow-500/10 to-orange-500/10"
         : "from-gray-500/10 to-gray-600/10",
-      borderColor: isConnected ? "border-yellow-500/20" : "border-gray-500/20",
+      borderColor: isSuccess ? "border-yellow-500/20" : "border-gray-500/20",
     },
   ];
 
@@ -102,7 +107,7 @@ export function LiveMarketStats() {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-2">
                 <Icon className={`w-5 h-5 ${stat.color}`} />
-                {isConnected && idx === 3 && (
+                {isSuccess && idx === 3 && (
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>

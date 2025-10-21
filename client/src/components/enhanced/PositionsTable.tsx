@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { useHyperliquid } from "@/hooks/useHyperliquid";
 import { toast } from "sonner";
 import { X, TrendingUp, TrendingDown } from "lucide-react";
 
@@ -46,21 +46,25 @@ interface PositionsTableProps {
 
 export function PositionsTable({ positions, currentPrices, onRefresh }: PositionsTableProps) {
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
+  const hyperliquid = useHyperliquid();
 
-  const closePosition = trpc.trading.closePosition.useMutation({
-    onSuccess: () => {
-      toast.success("✅ Position closed");
+  const handleClosePosition = async (position: Position) => {
+    try {
+      const size = Math.abs(parseFloat(position.szi));
+      const isLong = parseFloat(position.szi) > 0;
+
+      await hyperliquid.closePosition({
+        coin: position.coin,
+        size,
+        isLong,
+      });
+
       setSelectedPosition(null);
       onRefresh?.();
-    },
-    onError: (error) => toast.error(`❌ Failed to close: ${error.message}`),
-  });
-
-  const handleClosePosition = (position: Position) => {
-    closePosition.mutate({
-      coin: position.coin,
-      size: Math.abs(parseFloat(position.szi)),
-    });
+    } catch (error) {
+      // Error already handled in hook
+      console.error("Close position error:", error);
+    }
   };
 
   // Calculate current PNL

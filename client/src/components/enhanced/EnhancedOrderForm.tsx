@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { useHyperliquid } from "@/hooks/useHyperliquid";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Settings2 } from "lucide-react";
 
@@ -49,94 +49,86 @@ export function EnhancedOrderForm({
     }
   }, [orderTab, currentPrice, limitPrice]);
 
-  // Trading mutations
-  const placeMarketOrder = trpc.trading.placeMarketOrder.useMutation({
-    onSuccess: () => {
-      toast.success(`✅ Market ${side} order placed`);
-      setSize("");
-      onOrderPlaced?.();
-    },
-    onError: (error) => toast.error(`❌ Order failed: ${error.message}`),
-  });
+  // Use client-side Hyperliquid hook (signs with MetaMask)
+  const hyperliquid = useHyperliquid();
 
-  const placeLimitOrder = trpc.trading.placeLimitOrder.useMutation({
-    onSuccess: () => {
-      toast.success(`✅ Limit ${side} order placed`);
-      setSize("");
-      setLimitPrice("");
-      onOrderPlaced?.();
-    },
-    onError: (error) => toast.error(`❌ Order failed: ${error.message}`),
-  });
-
-  const placeBracketOrder = trpc.trading.placeBracketOrder.useMutation({
-    onSuccess: () => {
-      toast.success("✅ Bracket order placed");
-      setSize("");
-      setLimitPrice("");
-      setStopLossPrice("");
-      setTakeProfitPrice("");
-      onOrderPlaced?.();
-    },
-    onError: (error) => toast.error(`❌ Order failed: ${error.message}`),
-  });
-
-  // Handle order submission
-  const handleSubmit = () => {
+  // Handle order submission (client-side signing)
+  const handleSubmit = async () => {
     const sizeNum = parseFloat(size);
-    
+
     if (!size || sizeNum <= 0) {
       toast.error("Enter a valid size");
       return;
     }
 
-    if (orderTab === "market") {
-      placeMarketOrder.mutate({
-        coin,
-        isBuy: side === "buy",
-        size: sizeNum,
-        slippage: 0.05,
-      });
-    } else if (orderTab === "limit") {
-      const priceNum = parseFloat(limitPrice);
-      if (!limitPrice || priceNum <= 0) {
-        toast.error("Enter a valid price");
-        return;
-      }
-      
-      placeLimitOrder.mutate({
-        coin,
-        isBuy: side === "buy",
-        size: sizeNum,
-        price: priceNum,
-        reduceOnly,
-      });
-    } else if (orderTab === "pro") {
-      const entryNum = parseFloat(limitPrice);
-      const slNum = parseFloat(stopLossPrice);
-      const tpNum = parseFloat(takeProfitPrice);
+    try {
+      if (orderTab === "market") {
+        await hyperliquid.placeMarketOrder({
+          coin,
+          isBuy: side === "buy",
+          size: sizeNum,
+          slippage: 0.5, // 0.5% slippage
+        });
+        setSize("");
+        onOrderPlaced?.();
+      } else if (orderTab === "limit") {
+        const priceNum = parseFloat(limitPrice);
+        if (!limitPrice || priceNum <= 0) {
+          toast.error("Enter a valid price");
+          return;
+        }
 
-      if (!limitPrice || entryNum <= 0) {
-        toast.error("Enter entry price");
-        return;
-      }
-      if (!stopLossPrice || slNum <= 0) {
-        toast.error("Enter stop loss price");
-        return;
-      }
-      if (!takeProfitPrice || tpNum <= 0) {
-        toast.error("Enter take profit price");
-        return;
-      }
+        await hyperliquid.placeOrder({
+          coin,
+          isBuy: side === "buy",
+          size: sizeNum,
+          limitPrice: priceNum,
+          reduceOnly,
+          tif: postOnly ? "Alo" : timeInForce === "GTC" ? "Gtc" : "Ioc",
+        });
+        setSize("");
+        setLimitPrice("");
+        onOrderPlaced?.();
+      } else if (orderTab === "pro") {
+        const entryNum = parseFloat(limitPrice);
+        const slNum = parseFloat(stopLossPrice);
+        const tpNum = parseFloat(takeProfitPrice);
 
-      placeBracketOrder.mutate({
-        coin,
-        isBuy: side === "buy",
-        size: sizeNum,
-        entryPrice: entryNum,
-        stopLossPrice: slNum,
-        takeProfitPrice: tpNum,
-      });
+        if (!limitPrice || entryNum <= 0) {
+          toast.error("Enter entry price");
+          return;
+        }
+        if (!stopLossPrice || slNum <= 0) {
+          toast.error("Enter stop loss price");
+          return;
+        }
+        if (!takeProfitPrice || tpNum <= 0) {
+          toast.error("Enter take profit price");
+          return;
+        }
+
+        // Place entry order
+        await hyperliquid.placeOrder({
+          coin,
+          isBuy: side === "buy",
+          size: sizeNum,
+          limitPrice: entryNum,
+          tif: "Gtc",
+        });
+
+        // Note: Bracket orders (SL/TP) need to be placed separately
+        // This is a simplified version - full implementation would place 3 orders
+        toast.info("Entry order placed. Set SL/TP manually after fill.");
+
+        setSize("");
+        setLimitPrice("");
+        setStopLossPrice("");
+        setTakeProfitPrice("");
+        onOrderPlaced?.();
+      }
+    } catch (error) {
+      // Error already handled in useHyperliquid hook
+      console.error("Order submission error:", error);
     }
   };
 

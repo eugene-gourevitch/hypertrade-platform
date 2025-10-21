@@ -3,7 +3,7 @@
  * Shows real-time scrolling prices for all crypto assets
  */
 
-import { useAllMids } from "@/hooks/useWebSocket";
+import { trpc } from "@/lib/trpc";
 import { useEffect, useRef, useState } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
@@ -15,11 +15,18 @@ interface PriceChange {
 }
 
 export function MarketTicker() {
-  const { mids, isConnected } = useAllMids();
+  // Use polling instead of WebSocket subscriptions for homepage
+  const { data: mids } = trpc.market.getAllMids.useQuery(undefined, {
+    refetchInterval: 2000, // Poll every 2 seconds
+    refetchIntervalInBackground: true,
+  });
+
   const [priceChanges, setPriceChanges] = useState<Record<string, PriceChange>>({});
   const previousMidsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
+    if (!mids) return;
+
     // Calculate price changes
     const changes: Record<string, PriceChange> = {};
 
@@ -41,13 +48,13 @@ export function MarketTicker() {
     previousMidsRef.current = mids;
   }, [mids]);
 
-  const coins = Object.keys(mids).sort();
+  const coins = mids ? Object.keys(mids).sort() : [];
 
-  if (!isConnected || coins.length === 0) {
+  if (!mids || coins.length === 0) {
     return (
       <div className="bg-black/40 border-y border-gray-800/50 backdrop-blur-sm">
         <div className="py-2 px-4 text-center text-gray-500 text-sm">
-          Connecting to market data...
+          Loading market data...
         </div>
       </div>
     );
