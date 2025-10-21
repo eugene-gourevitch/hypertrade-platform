@@ -68,8 +68,8 @@ export function PositionsTable({ positions, currentPrices, onRefresh }: Position
     const size = parseFloat(position.szi);
     const entryPrice = parseFloat(position.entryPx || "0");
     const currentPrice = parseFloat(currentPrices[position.coin] || "0");
-    
-    if (!currentPrice || !entryPrice) return { pnl: 0, pnlPercent: 0 };
+
+    if (!currentPrice || !entryPrice || entryPrice === 0) return { pnl: 0, pnlPercent: 0 };
 
     const pnl = size * (currentPrice - entryPrice);
     const pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100 * Math.sign(size);

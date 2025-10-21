@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { websocketRouter } from "./websocket_router";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import * as hyperliquid from "./hyperliquid";
+import * as hyperliquid from "./hyperliquid"; // TODO: Migrate remaining functions to persistent daemon
 import * as hyperliquidPersistent from "./hyperliquid_persistent";
 import * as db from "./db";
 import { randomBytes } from "crypto";
@@ -28,10 +28,6 @@ export const appRouter = router({
   market: router({
     getMeta: publicProcedure.query(async () => {
       return await hyperliquidPersistent.getMeta();
-    }),
-
-    getSpotMeta: publicProcedure.query(async () => {
-      return await hyperliquid.getSpotMeta();
     }),
 
     getAllMids: publicProcedure.query(async () => {
@@ -79,7 +75,7 @@ export const appRouter = router({
     }),
 
     getUserFills: protectedProcedure.query(async ({ ctx }) => {
-      return await hyperliquid.getUserFills();
+      return await hyperliquidPersistent.getUserFills();
     }),
 
     getSettings: protectedProcedure.query(async ({ ctx }) => {

@@ -17,11 +17,12 @@ class HyperliquidDaemon {
   private process: ChildProcess | null = null;
   private rl: readline.Interface | null = null;
   private ready = false;
-  private requestQueue: Array<{
-    request: any;
+  private pendingRequests = new Map<string, {
     resolve: (value: any) => void;
     reject: (error: Error) => void;
-  }> = [];
+    timer: NodeJS.Timeout;
+  }>();
+  private requestIdCounter = 0;
 
   async start() {
     if (this.process && this.ready) {
@@ -92,14 +93,31 @@ class HyperliquidDaemon {
     // Handle responses
     this.rl.on("line", (line) => {
       if (!line.trim()) return;
-      const response = JSON.parse(line);
-      const pending = this.requestQueue.shift();
-      if (pending) {
-        if (response.success) {
-          pending.resolve(response.data);
-        } else {
-          pending.reject(new Error(response.error));
+
+      try {
+        const response = JSON.parse(line);
+        const requestId = response.id;
+
+        if (!requestId) {
+          console.warn("[Hyperliquid Daemon] Response missing request ID:", line);
+          return;
         }
+
+        const pending = this.pendingRequests.get(requestId);
+        if (pending) {
+          clearTimeout(pending.timer);
+          this.pendingRequests.delete(requestId);
+
+          if (response.success) {
+            pending.resolve(response.data);
+          } else {
+            pending.reject(new Error(response.error || "Unknown error"));
+          }
+        } else {
+          console.warn("[Hyperliquid Daemon] No pending request for ID:", requestId);
+        }
+      } catch (error) {
+        console.error("[Hyperliquid Daemon] Failed to parse response:", error, "Line:", line);
       }
     });
 
@@ -114,6 +132,14 @@ class HyperliquidDaemon {
       this.ready = false;
       this.process = null;
       this.rl = null;
+
+      // Reject all pending requests
+      const error = new Error(`Daemon process exited with code ${code}`);
+      for (const [id, pending] of this.pendingRequests.entries()) {
+        clearTimeout(pending.timer);
+        pending.reject(error);
+      }
+      this.pendingRequests.clear();
     });
   }
 
@@ -136,26 +162,35 @@ class HyperliquidDaemon {
     }
 
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
+      const requestId = `req_${++this.requestIdCounter}_${Date.now()}`;
+
+      const timer = setTimeout(() => {
+        this.pendingRequests.delete(requestId);
         reject(new Error(`Request timeout: ${command}`));
       }, 30000);
 
-      this.requestQueue.push({
-        request: { command, args },
-        resolve: (value) => {
-          clearTimeout(timeout);
-          resolve(value);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          reject(error);
-        },
+      this.pendingRequests.set(requestId, {
+        resolve,
+        reject,
+        timer,
       });
 
-      // Send request
-      this.process!.stdin!.write(
-        JSON.stringify({ command, args }) + "\n"
-      );
+      // Send request with ID
+      const requestPayload = JSON.stringify({ id: requestId, command, args }) + "\n";
+
+      try {
+        const written = this.process!.stdin!.write(requestPayload);
+        if (!written) {
+          console.warn("[Hyperliquid Daemon] Write buffer full, waiting for drain...");
+          this.process!.stdin!.once('drain', () => {
+            console.log("[Hyperliquid Daemon] Buffer drained, continuing...");
+          });
+        }
+      } catch (error) {
+        clearTimeout(timer);
+        this.pendingRequests.delete(requestId);
+        reject(new Error(`Failed to write request: ${error}`));
+      }
     });
   }
 }
@@ -182,6 +217,10 @@ export async function getL2Snapshot(coin: string) {
 
 export async function getOpenOrders(address?: string) {
   return daemon.request("get_open_orders", { address });
+}
+
+export async function getUserFills(address?: string) {
+  return daemon.request("get_user_fills", { address });
 }
 
 export async function getCandles(

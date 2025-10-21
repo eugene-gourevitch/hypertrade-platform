@@ -35,6 +35,8 @@ def init_clients(account_address: str, api_secret: str, testnet: bool = False):
 
 def handle_request(request: dict) -> dict:
     """Handle a single API request."""
+    request_id = request.get("id")
+
     try:
         command = request.get("command")
         args = request.get("args", {})
@@ -42,25 +44,30 @@ def handle_request(request: dict) -> dict:
         if command == "get_user_state":
             address = args.get("address") or ACCOUNT_ADDRESS
             result = info_client.user_state(address)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
             
         elif command == "get_all_mids":
             result = info_client.all_mids()
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
             
         elif command == "get_meta":
             result = info_client.meta()
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
             
         elif command == "get_l2_snapshot":
             coin = args.get("coin")
             result = info_client.l2_snapshot(coin)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
             
         elif command == "get_open_orders":
             address = args.get("address") or ACCOUNT_ADDRESS
             result = info_client.open_orders(address)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
+
+        elif command == "get_user_fills":
+            address = args.get("address") or ACCOUNT_ADDRESS
+            result = info_client.user_fills(address)
+            return {"id": request_id, "success": True, "data": result}
             
         elif command == "get_candles":
             coin = args.get("coin")
@@ -68,7 +75,7 @@ def handle_request(request: dict) -> dict:
             start_time = args.get("startTime")
             end_time = args.get("endTime")
             result = info_client.candles_snapshot(coin, interval, int(start_time), int(end_time))
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
         
         # Trading commands
         elif command == "place_order":
@@ -80,20 +87,20 @@ def handle_request(request: dict) -> dict:
             reduce_only = args.get("reduce_only", False)
             
             result = exchange_client.order(coin, is_buy, sz, limit_px, order_type, reduce_only)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
         
         elif command == "cancel_order":
             coin = args.get("coin")
             oid = args.get("oid")  # Order ID
             
             result = exchange_client.cancel(coin, oid)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
         
         elif command == "cancel_all_orders":
             coin = args.get("coin")
             
             result = exchange_client.cancel_all(coin)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
         
         elif command == "close_position":
             coin = args.get("coin")
@@ -108,11 +115,11 @@ def handle_request(request: dict) -> dict:
                     break
             
             if not position:
-                return {"success": False, "error": f"No open position for {coin}"}
+                return {"id": request_id, "success": False, "error": f"No open position for {coin}"}
             
             position_size = float(position["szi"])
             if position_size == 0:
-                return {"success": False, "error": f"Position size is zero for {coin}"}
+                return {"id": request_id, "success": False, "error": f"Position size is zero for {coin}"}
             
             # Determine close size
             close_size = abs(sz) if sz else abs(position_size)
@@ -124,7 +131,7 @@ def handle_request(request: dict) -> dict:
             order_type = {"trigger": {"isMarket": True, "triggerPx": 0, "tpsl": "tp"}}
             
             result = exchange_client.order(coin, is_buy, close_size, 0, order_type, reduce_only=True)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
         
         elif command == "modify_order":
             oid = args.get("oid")
@@ -136,13 +143,13 @@ def handle_request(request: dict) -> dict:
             reduce_only = args.get("reduce_only", False)
             
             result = exchange_client.modify(oid, coin, is_buy, sz, limit_px, order_type, reduce_only)
-            return {"success": True, "data": result}
+            return {"id": request_id, "success": True, "data": result}
 
         else:
-            return {"success": False, "error": f"Unknown command: {command}"}
-            
+            return {"id": request_id, "success": False, "error": f"Unknown command: {command}"}
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"id": request_id, "success": False, "error": str(e)}
 
 def main():
     """Main daemon loop."""

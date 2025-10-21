@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: hypertrade-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: pnpm install && pnpm build:backend
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HYPERLIQUID_ACCOUNT_ADDRESS
+        sync: false
+      - key: HYPERLIQUID_API_SECRET
+        sync: false
+      - key: HYPERLIQUID_TESTNET
+        value: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_URL
+        value: https://hypertrade.vercel.app
+    healthCheckPath: /api/trpc/system.health

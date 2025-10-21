@@ -18,6 +18,8 @@ export class HyperliquidWebSocket extends EventEmitter {
 
   constructor() {
     super();
+    // Set max listeners to prevent memory leaks (default is 10)
+    this.setMaxListeners(50);
     this.connect();
   }
 
@@ -74,6 +76,11 @@ export class HyperliquidWebSocket extends EventEmitter {
   }
 
   private handleMessage(message: any) {
+    if (!message || typeof message !== 'object') {
+      console.warn('[HyperWS] Invalid message format:', message);
+      return;
+    }
+
     const channel = message.channel;
     
     switch (channel) {

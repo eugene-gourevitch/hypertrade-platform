@@ -257,7 +257,6 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User> {
-    // Google OAuth authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
 
@@ -266,24 +265,15 @@ class SDKServer {
       throw ForbiddenError("Missing session cookie");
     }
 
-    // Decode the base64 session token
-    let sessionData;
-    try {
-      const decoded = Buffer.from(sessionCookie, 'base64').toString('utf-8');
-      sessionData = JSON.parse(decoded);
-    } catch (error) {
-      console.log("[Auth] Invalid session token format");
-      throw ForbiddenError("Invalid session token");
+    // Verify JWT session token (cryptographically secure)
+    const sessionData = await this.verifySession(sessionCookie);
+    if (!sessionData) {
+      console.log("[Auth] Invalid or expired session token");
+      throw ForbiddenError("Invalid or expired session token");
     }
 
-    // Check if session is expired
-    if (Date.now() > sessionData.expiresAt) {
-      console.log("[Auth] Session expired");
-      throw ForbiddenError("Session expired");
-    }
-
-    // Get user from database
-    const user = await db.getUser(sessionData.userId);
+    // Get user from database using openId (which is the wallet address or user ID)
+    const user = await db.getUser(sessionData.openId);
     if (!user) {
       console.log("[Auth] User not found in database");
       throw ForbiddenError("User not found");

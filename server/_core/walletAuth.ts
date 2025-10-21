@@ -4,8 +4,11 @@ import { nanoid } from "nanoid";
 import { verifyMessage } from "viem";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
+import { sdk } from "./sdk";
 
 // Store nonces temporarily (in production, use Redis)
+// Limit to prevent DoS attacks
+const MAX_NONCES = 10000;
 const nonces = new Map<string, { nonce: string; timestamp: number }>();
 
 // Clean up old nonces every 5 minutes
@@ -35,6 +38,16 @@ export function registerWalletAuthRoutes(app: Express) {
 
       // Normalize address to lowercase
       const normalizedAddress = address.toLowerCase();
+
+      // Check if we've hit the nonce limit (DoS protection)
+      if (nonces.size >= MAX_NONCES) {
+        // Clear oldest nonces if limit reached
+        const sortedNonces = Array.from(nonces.entries())
+          .sort((a, b) => a[1].timestamp - b[1].timestamp);
+        const toDelete = sortedNonces.slice(0, Math.floor(MAX_NONCES / 2));
+        toDelete.forEach(([addr]) => nonces.delete(addr));
+        console.warn(`[WalletAuth] Nonce limit reached (${MAX_NONCES}), cleared ${toDelete.length} old nonces`);
+      }
 
       // Generate a random nonce
       const nonce = nanoid(32);
@@ -125,9 +138,10 @@ export function registerWalletAuthRoutes(app: Express) {
         lastSignedIn: new Date(),
       });
 
-      // Create session token
-      const sessionToken = await createSessionToken(normalizedAddress, {
-        name: `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`
+      // Create secure JWT session token
+      const sessionToken = await sdk.createSessionToken(normalizedAddress, {
+        name: `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`,
+        expiresInMs: ONE_YEAR_MS
       });
 
       // Set session cookie
@@ -157,17 +171,3 @@ export function registerWalletAuthRoutes(app: Express) {
   });
 }
 
-/**
- * Create a simple session token (base64 encoded JSON)
- * In production, consider using JWT with proper signing
- */
-async function createSessionToken(userId: string, userData: { name: string }): Promise<string> {
-  const session = {
-    userId,
-    userData,
-    createdAt: Date.now(),
-    expiresAt: Date.now() + ONE_YEAR_MS,
-  };
-
-  return Buffer.from(JSON.stringify(session)).toString('base64');
-}

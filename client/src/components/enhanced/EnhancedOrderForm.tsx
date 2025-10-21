@@ -143,12 +143,15 @@ export function EnhancedOrderForm({
   // Quick size buttons (% of equity)
   const setQuickSize = (percent: number) => {
     if (!currentPrice || accountEquity <= 0) return;
-    
+
     const price = parseFloat(currentPrice);
+    if (!price || price <= 0 || !isFinite(price)) return;
+
     const leverageValue = leverage[0] || 1;
     const buyingPower = (accountEquity * percent / 100) * leverageValue;
     const calculatedSize = buyingPower / price;
-    
+
+    if (!isFinite(calculatedSize)) return;
     setSize(calculatedSize.toFixed(4));
   };
 
@@ -496,28 +499,39 @@ export function EnhancedOrderForm({
           </div>
 
           {/* Risk/Reward Display */}
-          {limitPrice && stopLossPrice && takeProfitPrice && (
-            <div className="space-y-1 text-xs bg-gray-900 p-2 rounded border border-gray-800">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Risk:</span>
-                <span className="text-red-500 font-mono">
-                  ${(parseFloat(size || "0") * Math.abs(parseFloat(limitPrice) - parseFloat(stopLossPrice))).toFixed(2)}
-                </span>
+          {limitPrice && stopLossPrice && takeProfitPrice && (() => {
+            const lpPrice = parseFloat(limitPrice);
+            const slPrice = parseFloat(stopLossPrice);
+            const tpPrice = parseFloat(takeProfitPrice);
+            const sizeNum = parseFloat(size || "0");
+
+            const risk = Math.abs(lpPrice - slPrice);
+            const reward = Math.abs(tpPrice - lpPrice);
+            const rrRatio = risk > 0 ? reward / risk : 0;
+
+            return (
+              <div className="space-y-1 text-xs bg-gray-900 p-2 rounded border border-gray-800">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Risk:</span>
+                  <span className="text-red-500 font-mono">
+                    ${(sizeNum * risk).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Reward:</span>
+                  <span className="text-green-500 font-mono">
+                    ${(sizeNum * reward).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">R:R Ratio:</span>
+                  <span className="text-yellow-500 font-mono">
+                    1:{rrRatio.toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Reward:</span>
-                <span className="text-green-500 font-mono">
-                  ${(parseFloat(size || "0") * Math.abs(parseFloat(takeProfitPrice) - parseFloat(limitPrice))).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">R:R Ratio:</span>
-                <span className="text-yellow-500 font-mono">
-                  1:{((Math.abs(parseFloat(takeProfitPrice) - parseFloat(limitPrice)) / Math.abs(parseFloat(limitPrice) - parseFloat(stopLossPrice)))).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Submit Button */}
           <Button
