@@ -8,11 +8,10 @@ import { trpc } from '@/lib/trpc';
 import { useEffect, useState } from 'react';
 
 // Check if we're on a platform that supports WebSocket subscriptions
-// Vercel doesn't support WebSocket subscriptions in tRPC, so we'll detect and fallback
+// Cloud Run supports WebSocket with 60-minute timeout
 const supportsWebSocketSubscriptions = () => {
-  // On Vercel or when httpLink is used, subscriptions aren't available
-  // We can detect this by checking if the environment suggests serverless
-  return false; // Force polling mode for now - safer for all deployments
+  // ✅ ENABLED: Real-time WebSocket streaming on Cloud Run
+  return true; // 🔥 REAL-TIME MODE ACTIVATED
 };
 
 /**

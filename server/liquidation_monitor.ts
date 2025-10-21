@@ -116,6 +116,15 @@ async function checkAllUsers() {
         // Send email alert
         const sent = await sendLiquidationWarning(alert.email, alert.positions);
 
+        // Send Telegram alerts
+        const userSettings = await db.getUserSettings(user.id);
+        if (userSettings?.telegramAlertsEnabled && userSettings?.telegramLiquidationAlerts && userSettings?.telegramChatId) {
+          const { sendLiquidationAlert } = await import('./telegram_bot');
+          for (const pos of alert.positions) {
+            await sendLiquidationAlert(userSettings.telegramChatId, pos);
+          }
+        }
+
         // Log each position alert to database
         for (const pos of alert.positions) {
           const alertType = pos.distancePercent < 10 ? "critical" : "warning";

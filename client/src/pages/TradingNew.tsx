@@ -23,7 +23,9 @@ import { OrderHistoryTab } from "@/components/trading/OrderHistoryTab";
 import { FundingHistoryTab } from "@/components/trading/FundingHistoryTab";
 import { TWAPTab } from "@/components/trading/TWAPTab";
 import { AIRecommendations } from "@/components/trading/AIRecommendations";
-import { Activity, TrendingUp, TrendingDown, DollarSign, Brain } from "lucide-react";
+import { PerformanceDashboard } from "@/components/trading/PerformanceDashboard";
+import { TelegramSettings } from "@/components/trading/TelegramSettings";
+import { Activity, TrendingUp, TrendingDown, DollarSign, Brain, BarChart3, Send } from "lucide-react";
 
 export default function TradingNew() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -246,6 +248,14 @@ export default function TradingNew() {
                   <Brain className="h-4 w-4 mr-2" />
                   AI Assistant
                 </TabsTrigger>
+                <TabsTrigger value="performance" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Performance
+                </TabsTrigger>
+                <TabsTrigger value="telegram" className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                  <Send className="h-4 w-4 mr-2" />
+                  Telegram
+                </TabsTrigger>
               </TabsList>
 
               <div className="flex-1 overflow-auto">
@@ -279,6 +289,14 @@ export default function TradingNew() {
                     mids={mids || undefined}
                     selectedCoin={selectedCoin}
                   />
+                </TabsContent>
+
+                <TabsContent value="performance" className="m-0 h-full overflow-auto">
+                  <PerformanceDashboard />
+                </TabsContent>
+
+                <TabsContent value="telegram" className="m-0 h-full overflow-auto">
+                  <TelegramSettings />
                 </TabsContent>
               </div>
             </Tabs>

@@ -47,6 +47,15 @@ export const userSettings = pgTable("userSettings", {
   defaultSlippage: varchar("defaultSlippage", { length: 8 }).default("0.05"),
   favoriteCoins: text("favoriteCoins"),
   theme: varchar("theme", { length: 16 }).default("dark"),
+
+  // Telegram settings
+  telegramChatId: varchar("telegramChatId", { length: 255 }),
+  telegramAlertsEnabled: boolean("telegramAlertsEnabled").default(false),
+  telegramLiquidationAlerts: boolean("telegramLiquidationAlerts").default(true),
+  telegramFillAlerts: boolean("telegramFillAlerts").default(true),
+  telegramPriceAlerts: boolean("telegramPriceAlerts").default(true),
+  telegramPnLAlerts: boolean("telegramPnLAlerts").default(true),
+
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
 

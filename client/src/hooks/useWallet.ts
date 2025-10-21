@@ -57,6 +57,9 @@ export function useWallet() {
             isConnecting: false,
             error: null,
           });
+
+          // Save wallet address to localStorage for authentication
+          localStorage.setItem('wallet_address', address);
         }
       } catch (error) {
         console.error("Error initializing provider:", error);
@@ -77,6 +80,7 @@ export function useWallet() {
           error: null,
         });
         setSigner(null);
+        localStorage.removeItem('wallet_address');
       } else {
         // Account changed
         setWallet((prev) => ({
@@ -84,6 +88,7 @@ export function useWallet() {
           address: accounts[0],
           isConnected: true,
         }));
+        localStorage.setItem('wallet_address', accounts[0]);
       }
     };
 
@@ -142,6 +147,9 @@ export function useWallet() {
         isConnecting: false,
         error: null,
       });
+
+      // Save wallet address to localStorage for authentication
+      localStorage.setItem('wallet_address', address);
     } catch (error: any) {
       console.error("Error connecting wallet:", error);
       setWallet((prev) => ({
@@ -162,6 +170,9 @@ export function useWallet() {
       error: null,
     });
     setSigner(null);
+
+    // Clear wallet address from localStorage
+    localStorage.removeItem('wallet_address');
   }, []);
 
   // Sign message

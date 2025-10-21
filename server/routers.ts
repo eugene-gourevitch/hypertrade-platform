@@ -136,6 +136,13 @@ export const appRouter = router({
           defaultSlippage: z.string().optional(),
           favoriteCoins: z.string().optional(),
           theme: z.string().optional(),
+          // Telegram settings
+          telegramChatId: z.string().optional(),
+          telegramAlertsEnabled: z.boolean().optional(),
+          telegramLiquidationAlerts: z.boolean().optional(),
+          telegramFillAlerts: z.boolean().optional(),
+          telegramPriceAlerts: z.boolean().optional(),
+          telegramPnLAlerts: z.boolean().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -151,6 +158,12 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return await db.getUserTrades(ctx.user.id, input.limit);
       }),
+
+    getPerformanceMetrics: protectedProcedure.query(async ({ ctx }) => {
+      const trades = await db.getUserTrades(ctx.user.id, 1000);
+      const { calculatePerformanceMetrics } = await import('./performance_metrics');
+      return calculatePerformanceMetrics(trades);
+    }),
   }),
 
   // Trading endpoints (protected)

@@ -1,0 +1,125 @@
+========================================
+GOOGLE CLOUD PROJECT CREATION & DEPLOYMENT
+========================================
+
+STEP 1: Re-authenticate (Required)
+----------------------------------
+Open a NEW PowerShell/Terminal window and run:
+
+    gcloud auth login
+
+This will open a browser - sign in with: eugene@carhauldirect.com
+
+
+STEP 2: Create Project
+----------------------------------
+After authentication, run:
+
+    gcloud projects create hypertrade-platform-14738 --name="HyperTrade Platform"
+
+✅ Your project ID will be: hypertrade-platform-14738
+
+
+STEP 3: Set Project
+----------------------------------
+    gcloud config set project hypertrade-platform-14738
+
+
+STEP 4: Enable Billing (REQUIRED)
+----------------------------------
+Go to: https://console.cloud.google.com/billing/projects
+
+1. Click "Link a billing account"
+2. Select your billing account (or create one)
+3. Link it to: hypertrade-platform-14738
+
+⚠️  WITHOUT BILLING, DEPLOYMENT WILL FAIL!
+
+
+STEP 5: Enable APIs
+----------------------------------
+    gcloud services enable cloudbuild.googleapis.com run.googleapis.com containerregistry.googleapis.com
+
+
+STEP 6: Build Container
+----------------------------------
+Navigate to your project:
+
+    cd "C:\Users\egour\OneDrive\Documents\GitHub\hypertrade-platform"
+
+Build the Docker image (takes 5-10 minutes):
+
+    gcloud builds submit --tag gcr.io/hypertrade-platform-14738/hypertrade
+
+
+STEP 7: Deploy to Cloud Run
+----------------------------------
+    gcloud run deploy hypertrade --image gcr.io/hypertrade-platform-14738/hypertrade --region us-central1 --platform managed --allow-unauthenticated --min-instances 1 --max-instances 10 --memory 2Gi --cpu 2 --timeout 3600
+
+
+STEP 8: Set Environment Variables
+----------------------------------
+Replace with YOUR actual values:
+
+    gcloud run services update hypertrade --region us-central1 --set-env-vars "DATABASE_URL=postgresql://YOUR_SUPABASE_URL,ANTHROPIC_API_KEY=sk-ant-YOUR_KEY,HYPERLIQUID_ACCOUNT_ADDRESS=0xYOUR_ADDRESS,HYPERLIQUID_API_SECRET=YOUR_SECRET,HYPERLIQUID_TESTNET=false"
+
+
+STEP 9: Get Your URL
+----------------------------------
+    gcloud run services describe hypertrade --region us-central1 --format "value(status.url)"
+
+This will output your live URL like:
+    https://hypertrade-abc123-uc.a.run.app
+
+
+========================================
+QUICK COPY-PASTE VERSION (All Steps)
+========================================
+
+# Step 1: Re-authenticate
+gcloud auth login
+
+# Step 2: Create project
+gcloud projects create hypertrade-platform-14738 --name="HyperTrade Platform"
+
+# Step 3: Set project
+gcloud config set project hypertrade-platform-14738
+
+# Step 4: Enable billing (do this in browser)
+# https://console.cloud.google.com/billing/projects
+
+# Step 5: Enable APIs
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com containerregistry.googleapis.com
+
+# Step 6: Build
+cd "C:\Users\egour\OneDrive\Documents\GitHub\hypertrade-platform"
+gcloud builds submit --tag gcr.io/hypertrade-platform-14738/hypertrade
+
+# Step 7: Deploy
+gcloud run deploy hypertrade --image gcr.io/hypertrade-platform-14738/hypertrade --region us-central1 --platform managed --allow-unauthenticated --min-instances 1 --max-instances 10 --memory 2Gi --cpu 2 --timeout 3600
+
+# Step 8: Set env vars (REPLACE WITH YOUR VALUES!)
+gcloud run services update hypertrade --region us-central1 --set-env-vars "DATABASE_URL=postgresql://...,ANTHROPIC_API_KEY=sk-ant-...,HYPERLIQUID_ACCOUNT_ADDRESS=0x...,HYPERLIQUID_API_SECRET=..."
+
+# Step 9: Get URL
+gcloud run services describe hypertrade --region us-central1 --format "value(status.url)"
+
+
+========================================
+YOUR PROJECT DETAILS
+========================================
+Project ID: hypertrade-platform-14738
+Project Name: HyperTrade Platform
+Region: us-central1
+Service Name: hypertrade
+Image: gcr.io/hypertrade-platform-14738/hypertrade
+
+========================================
+ESTIMATED COST
+========================================
+Free tier: 2M requests/month
+After that: ~$15-30/month for moderate usage
+
+Set a budget alert: https://console.cloud.google.com/billing/budgets
+
+========================================
