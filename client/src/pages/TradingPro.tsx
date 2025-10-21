@@ -134,12 +134,7 @@ export default function TradingPro() {
             <span className="text-2xl font-mono font-bold">
               ${parseFloat(currentPrice).toLocaleString()}
             </span>
-            <Badge
-              variant="secondary"
-              className="bg-green-500/20 text-green-500 font-mono"
-            >
-              +2.5%
-            </Badge>
+            {/* 24h change - TODO: Calculate from real data */}
           </div>
 
           {/* WebSocket Status */}
@@ -191,9 +186,12 @@ export default function TradingPro() {
               </div>
             </>
           ) : (
-            <Button asChild>
-              <a href="/api/oauth/login">Sign In</a>
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">Connect wallet to trade</span>
+              <Button asChild variant="default">
+                <a href="/">Connect Wallet</a>
+              </Button>
+            </div>
           )}
         </div>
       </header>

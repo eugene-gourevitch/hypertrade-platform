@@ -129,6 +129,19 @@ export function registerWalletAuthRoutes(app: Express) {
       // Delete used nonce
       nonces.delete(normalizedAddress);
 
+      // Check if wallet is authorized (if AUTHORIZED_WALLET is set)
+      const authorizedWallet = process.env.AUTHORIZED_WALLET?.toLowerCase();
+      if (authorizedWallet && authorizedWallet !== 'none' && normalizedAddress !== authorizedWallet) {
+        console.warn(`[WalletAuth] ❌ Unauthorized wallet attempt: ${normalizedAddress}`);
+        res.status(403).json({ 
+          error: "Access denied",
+          message: `Only authorized wallets can access this platform. Your wallet: ${normalizedAddress}`
+        });
+        return;
+      }
+
+      console.log(`[WalletAuth] ✅ Wallet authorized: ${normalizedAddress}`);
+
       // Create or update user in database
       await db.upsertUser({
         id: normalizedAddress,

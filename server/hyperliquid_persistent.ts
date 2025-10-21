@@ -43,12 +43,38 @@ class HyperliquidDaemon {
     const USE_TESTNET = process.env.HYPERLIQUID_TESTNET === "true";
     console.log("[Hyperliquid Daemon] Account:", ACCOUNT_ADDRESS.substring(0, 10) + "...");
 
-    this.process = spawn("python3.11", ["-u", DAEMON_SCRIPT]);
+    // Try different Python commands (cross-platform support)
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    
+    try {
+      this.process = spawn(pythonCommand, ["-u", DAEMON_SCRIPT]);
 
-    // Log stderr for debugging
-    this.process.stderr!.on("data", (data) => {
-      console.error("[Hyperliquid Daemon] stderr:", data.toString());
-    });
+      // Handle spawn errors (e.g., Python not installed)
+      this.process.on('error', (error: any) => {
+        console.error("[Hyperliquid Daemon] Failed to spawn:", error.message);
+        if (error.code === 'ENOENT') {
+          console.warn("[Hyperliquid Daemon] ⚠️ Python not found - daemon disabled");
+          console.warn("[Hyperliquid Daemon] Trading features may be limited without Python");
+          this.process = null;
+          this.ready = false;
+        }
+      });
+
+      // Log stderr for debugging
+      this.process.stderr!.on("data", (data) => {
+        console.error("[Hyperliquid Daemon] stderr:", data.toString());
+      });
+    } catch (error: any) {
+      console.error("[Hyperliquid Daemon] Spawn error:", error.message);
+      this.process = null;
+      this.ready = false;
+      return;
+    }
+
+    if (!this.process) {
+      console.warn("[Hyperliquid Daemon] ⚠️ Daemon not started - Python unavailable");
+      return;
+    }
 
     this.rl = readline.createInterface({
       input: this.process.stdout!,

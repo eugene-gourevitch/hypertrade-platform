@@ -61,7 +61,6 @@
     "ethers": "^6.15.0",
     "express": "^4.21.2",
     "framer-motion": "^12.23.22",
-    "google-auth-library": "^10.4.1",
     "input-otp": "^1.4.2",
     "jose": "6.1.0",
     "lightweight-charts": "^5.0.9",
