@@ -257,44 +257,42 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User> {
-    // Regular authentication flow
+    // Google OAuth authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
-    const session = await this.verifySession(sessionCookie);
 
-    if (!session) {
-      throw ForbiddenError("Invalid session cookie");
+    if (!sessionCookie) {
+      console.log("[Auth] Missing session cookie");
+      throw ForbiddenError("Missing session cookie");
     }
 
-    const sessionUserId = session.openId;
-    const signedInAt = new Date();
-    let user = await db.getUser(sessionUserId);
-
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
-        await db.upsertUser({
-          id: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUser(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
+    // Decode the base64 session token
+    let sessionData;
+    try {
+      const decoded = Buffer.from(sessionCookie, 'base64').toString('utf-8');
+      sessionData = JSON.parse(decoded);
+    } catch (error) {
+      console.log("[Auth] Invalid session token format");
+      throw ForbiddenError("Invalid session token");
     }
 
+    // Check if session is expired
+    if (Date.now() > sessionData.expiresAt) {
+      console.log("[Auth] Session expired");
+      throw ForbiddenError("Session expired");
+    }
+
+    // Get user from database
+    const user = await db.getUser(sessionData.userId);
     if (!user) {
+      console.log("[Auth] User not found in database");
       throw ForbiddenError("User not found");
     }
 
+    // Update last signed in time
     await db.upsertUser({
       id: user.id,
-      lastSignedIn: signedInAt,
+      lastSignedIn: new Date(),
     });
 
     return user;

@@ -2,11 +2,13 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import cookieParser from 'cookie-parser';
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { hyperliquidWS } from "../hyperliquid_websocket";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -33,6 +35,8 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Cookie parser for OAuth state management
+  app.use(cookieParser());
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
@@ -65,6 +69,19 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    
+    // Initialize WebSocket connections
+    console.log('[Server] Initializing Hyperliquid WebSocket...');
+    hyperliquidWS.subscribeAllMids();
+    
+    // Log WebSocket events
+    hyperliquidWS.on('connected', () => {
+      console.log('[Server] ✅ WebSocket connected and subscribed');
+    });
+    
+    hyperliquidWS.on('error', (error) => {
+      console.error('[Server] WebSocket error:', error.message);
+    });
   });
 }
 

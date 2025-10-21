@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
+import { websocketRouter } from "./websocket_router";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as hyperliquid from "./hyperliquid";
@@ -10,6 +11,7 @@ import { randomBytes } from "crypto";
 
 export const appRouter = router({
   system: systemRouter,
+  ws: websocketRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

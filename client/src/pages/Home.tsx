@@ -33,7 +33,7 @@ export default function Home() {
                 </>
               ) : (
                 <Button asChild variant="default">
-                  <a href="/trade">Try Now</a>
+                  <a href={getLoginUrl()}>Login with Google</a>
                 </Button>
               )}
             </div>
@@ -48,12 +48,12 @@ export default function Home() {
             Professional Trading Platform
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Experience professional trading tools with advanced charting,
-            real-time market data, and Bloomberg-style interface in demo mode.
+            Professional trading platform with Google OAuth authentication.
+            <br />Access restricted to authorized users only.
           </p>
           <div className="flex gap-4 justify-center">
             <Button asChild size="lg" className="text-lg px-8">
-              <a href="/trade">Start Trading Demo</a>
+              <a href={getLoginUrl()}>Sign In with Google</a>
             </Button>
             <Button asChild size="lg" variant="outline" className="text-lg px-8">
               <a href="#features">Learn More</a>
