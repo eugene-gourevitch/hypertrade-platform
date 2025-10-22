@@ -4,20 +4,29 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, Target } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface TPSLOrderEntryProps {
   selectedCoin: string;
   currentPrice: string;
+  orderSize: number;
   onPlaceOrder: (params: any) => void;
   isLoading?: boolean;
 }
 
-export function TPSLOrderEntry({ selectedCoin, currentPrice, onPlaceOrder, isLoading }: TPSLOrderEntryProps) {
+export function TPSLOrderEntry({ selectedCoin, currentPrice, orderSize, onPlaceOrder, isLoading }: TPSLOrderEntryProps) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [orderType, setOrderType] = useState<"market" | "limit">("limit");
   const [size, setSize] = useState("");
   const [price, setPrice] = useState("");
+
+  // Update size when orderSize prop changes
+  useEffect(() => {
+    if (orderSize > 0) {
+      setSize(orderSize.toFixed(4));
+    }
+  }, [orderSize]);
+
   const [reduceOnly, setReduceOnly] = useState(false);
 
   // TP/SL settings

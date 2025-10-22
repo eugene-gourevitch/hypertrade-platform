@@ -36,10 +36,10 @@ export function TelegramSettings() {
       await updateSettings.mutateAsync({
         telegramChatId: chatId,
         telegramAlertsEnabled: enabled,
-        telegramLiquidationAlerts,
-        telegramFillAlerts,
-        telegramPriceAlerts,
-        telegramPnLAlerts,
+        telegramLiquidationAlerts: liquidationAlerts,
+        telegramFillAlerts: fillAlerts,
+        telegramPriceAlerts: priceAlerts,
+        telegramPnLAlerts: pnlAlerts,
       });
 
       toast.success("Telegram settings saved!");

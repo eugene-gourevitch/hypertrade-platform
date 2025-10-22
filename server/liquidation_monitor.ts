@@ -32,7 +32,7 @@ async function checkUserLiquidation(userId: string, email: string): Promise<Liqu
     // Get user state
     const userState = await hyperliquidPersistent.getUserState(userId).catch(() =>
       hyperliquidHTTP.getUserState(userId)
-    );
+    ) as any;
 
     if (!userState || !userState.assetPositions) {
       return null;
@@ -41,7 +41,7 @@ async function checkUserLiquidation(userId: string, email: string): Promise<Liqu
     // Get current prices
     const mids = await hyperliquidPersistent.getAllMids().catch(() =>
       hyperliquidHTTP.getAllMids()
-    );
+    ) as any;
 
     // Check each position for liquidation risk
     const riskyPositions = userState.assetPositions
@@ -102,6 +102,11 @@ async function checkAllUsers() {
     console.log(`[Liquidation Monitor] Checking ${users.length} users...`);
 
     for (const user of users) {
+      // Skip users without email
+      if (!user.email) {
+        continue;
+      }
+
       // Skip if we recently sent an alert to this user
       const lastAlert = lastAlertTime.get(user.id);
       if (lastAlert && Date.now() - lastAlert < ALERT_COOLDOWN) {
@@ -120,8 +125,9 @@ async function checkAllUsers() {
         const userSettings = await db.getUserSettings(user.id);
         if (userSettings?.telegramAlertsEnabled && userSettings?.telegramLiquidationAlerts && userSettings?.telegramChatId) {
           const { sendLiquidationAlert } = await import('./telegram_bot');
+          const chatId = userSettings.telegramChatId;
           for (const pos of alert.positions) {
-            await sendLiquidationAlert(userSettings.telegramChatId, pos);
+            await sendLiquidationAlert(chatId, pos);
           }
         }
 

@@ -33,8 +33,8 @@ export interface PerformanceMetrics {
 
   // Time-based P&L
   dailyPnL: Array<{ date: string; pnl: number; cumulative: number }>;
-  weeklyPnL: Array<{ week: string; pnl: number; cumulative: number }>;
-  monthlyPnL: Array<{ month: string; pnl: number; cumulative: number }>;
+  weeklyPnL: Array<{ date: string; pnl: number; cumulative: number }>;
+  monthlyPnL: Array<{ date: string; pnl: number; cumulative: number }>;
 
   // By coin performance
   byCoin: Record<string, {

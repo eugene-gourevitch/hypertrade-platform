@@ -19,7 +19,7 @@ export const aiRouter = router({
     .input(
       z.object({
         userState: z.any(),
-        mids: z.record(z.string()),
+        mids: z.record(z.string(), z.string()),
         selectedCoin: z.string(),
       })
     )
@@ -60,7 +60,7 @@ export const aiRouter = router({
         const coin = position.coin;
         const size = parseFloat(position.szi || "0");
         const entryPrice = parseFloat(position.entryPx || "0");
-        const currentPrice = parseFloat(mids[coin] || "0");
+        const currentPrice = parseFloat((mids[coin] || "0") as string);
         const unrealizedPnl = parseFloat(position.unrealizedPnl || "0");
         const leverage = position.leverage?.value || 1;
         const liquidationPx = parseFloat(position.liquidationPx || "0");
@@ -101,7 +101,7 @@ export const aiRouter = router({
 - Total Unrealized PNL: $${totalUnrealizedPnl.toFixed(2)}
 
 ## Open Positions
-${positionDetails.length > 0 ? positionDetails.map((p) => `
+${positionDetails.length > 0 ? positionDetails.map((p: any) => `
 - ${p.coin}: ${p.side} ${p.size} @ $${p.entryPrice}
   Current Price: $${p.currentPrice}
   PNL: $${p.unrealizedPnl} (${p.pnlPercent}%)
@@ -111,7 +111,7 @@ ${positionDetails.length > 0 ? positionDetails.map((p) => `
 
 ## Current Market Context
 Selected Coin: ${selectedCoin}
-Current Price: $${parseFloat(mids[selectedCoin] || "0").toFixed(2)}
+Current Price: $${parseFloat((mids[selectedCoin] || "0") as string).toFixed(2)}
 
 ## Analysis Required
 1. **Risk Assessment**: Evaluate liquidation risk for each position and overall portfolio risk

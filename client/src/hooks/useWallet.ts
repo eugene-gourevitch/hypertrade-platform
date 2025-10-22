@@ -175,6 +175,7 @@ export function useWallet() {
       error: null,
     });
     setSigner(null);
+    setProvider(null);
 
     // Clear wallet address from localStorage
     localStorage.removeItem('wallet_address');

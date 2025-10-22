@@ -36,6 +36,7 @@ export default function TradingNew() {
   const [leverage, setLeverage] = useState(10);
   const [bottomTab, setBottomTab] = useState("balances");
   const [orderSize, setOrderSize] = useState(0);
+  const [marketType, setMarketType] = useState<"perp" | "spot">("perp");
 
   // Fetch market data
   const { meta } = useHyperliquidMeta();
@@ -293,12 +294,52 @@ export default function TradingNew() {
           <div className="p-4 border-b border-border overflow-y-auto max-h-[60vh]">
             <h3 className="text-sm font-semibold mb-4">Place Order</h3>
 
+            {/* Market Type Toggle */}
+            <div className="mb-4 flex gap-2">
+              <Button
+                size="sm"
+                variant={marketType === "perp" ? "default" : "outline"}
+                onClick={() => setMarketType("perp")}
+                className="flex-1"
+              >
+                Perpetual
+              </Button>
+              <Button
+                size="sm"
+                variant={marketType === "spot" ? "default" : "outline"}
+                onClick={() => setMarketType("spot")}
+                className="flex-1"
+              >
+                Spot
+              </Button>
+            </div>
+
+            {/* Leverage Selector (only for perps) */}
+            {marketType === "perp" && (
+              <div className="mb-4">
+                <label className="text-xs font-semibold mb-2 block">Leverage: {leverage}x</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {[5, 10, 20, 50, 100].map((lev) => (
+                    <Button
+                      key={lev}
+                      size="sm"
+                      variant={leverage === lev ? "default" : "outline"}
+                      onClick={() => setLeverage(lev)}
+                      className="text-xs"
+                    >
+                      {lev}x
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Position Sizer */}
             <div className="mb-4">
               <PositionSizer
                 accountValue={accountValue}
                 currentPrice={parseFloat(currentPrice)}
-                leverage={leverage}
+                leverage={marketType === "perp" ? leverage : 1}
                 onSizeChange={setOrderSize}
               />
             </div>
@@ -307,6 +348,7 @@ export default function TradingNew() {
             <TPSLOrderEntry
               selectedCoin={selectedCoin}
               currentPrice={currentPrice}
+              orderSize={orderSize}
               onPlaceOrder={handlePlaceOrder}
               isLoading={hyperliquid.status.isLoading}
             />

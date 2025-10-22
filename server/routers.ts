@@ -126,6 +126,13 @@ export const appRouter = router({
         defaultSlippage: "0.05",
         favoriteCoins: null,
         theme: "dark",
+        telegramChatId: null,
+        telegramAlertsEnabled: false,
+        telegramLiquidationAlerts: true,
+        telegramFillAlerts: true,
+        telegramPriceAlerts: true,
+        telegramPnLAlerts: true,
+        updatedAt: null,
       };
     }),
 

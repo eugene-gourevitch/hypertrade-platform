@@ -749,7 +749,7 @@ export default function TradingAdvanced() {
             {wallet.address && (
               <AIRecommendations
                 userState={userState}
-                mids={mids}
+                mids={mids || undefined}
                 selectedCoin={selectedCoin}
               />
             )}

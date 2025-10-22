@@ -32,7 +32,7 @@ export function FundingHistoryTab({ userState }: FundingHistoryTabProps) {
     );
   }
 
-  const totalFundingSinceOpen = fundingData.reduce((sum, item) => sum + item.fundingSinceOpen, 0);
+  const totalFundingSinceOpen = fundingData.reduce((sum: number, item: any) => sum + item.fundingSinceOpen, 0);
 
   return (
     <div className="p-4">
@@ -67,7 +67,7 @@ export function FundingHistoryTab({ userState }: FundingHistoryTabProps) {
               </tr>
             </thead>
             <tbody>
-              {fundingData.map((item, idx) => {
+              {fundingData.map((item: any, idx: number) => {
                 const isPaid = item.fundingSinceOpen > 0;
                 const isLong = item.size > 0;
 
