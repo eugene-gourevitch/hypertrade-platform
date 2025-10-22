@@ -41,36 +41,50 @@ async function signAction(
   action: any,
   nonce: number
 ): Promise<{ r: string; s: string; v: number }> {
-  const types = {
-    Agent: [
-      { name: "source", type: "string" },
-      { name: "connectionId", type: "bytes32" },
-    ],
-    Action: [
-      { name: "type", type: "string" },
-      { name: "orders", type: "Order[]" },
-      { name: "nonce", type: "uint64" },
-    ],
-    Order: [
-      { name: "asset", type: "uint32" },
-      { name: "isBuy", type: "bool" },
-      { name: "limitPx", type: "uint64" },
-      { name: "sz", type: "uint64" },
-      { name: "reduceOnly", type: "bool" },
-      { name: "orderType", type: "OrderType" },
-    ],
-    OrderType: [
-      { name: "limit", type: "Limit" },
-    ],
-    Limit: [
-      { name: "tif", type: "string" },
-    ],
-  };
+  // Define types based on action type
+  let types: any;
+  let value: any;
 
-  const value = {
-    ...action,
-    nonce,
-  };
+  if (action.type === "order") {
+    types = {
+      Order: [
+        { name: "asset", type: "uint32" },
+        { name: "isBuy", type: "bool" },
+        { name: "limitPx", type: "uint64" },
+        { name: "sz", type: "uint64" },
+        { name: "reduceOnly", type: "bool" },
+        { name: "orderType", type: "OrderType" },
+      ],
+      OrderType: [
+        { name: "limit", type: "Limit" },
+      ],
+      Limit: [
+        { name: "tif", type: "string" },
+      ],
+      Action: [
+        { name: "type", type: "string" },
+        { name: "orders", type: "Order[]" },
+        { name: "nonce", type: "uint64" },
+      ],
+    };
+    value = {
+      type: action.type,
+      orders: action.orders,
+      nonce,
+    };
+  } else {
+    // For other action types (cancel, updateLeverage, etc.), use generic structure
+    types = {
+      Action: [
+        { name: "type", type: "string" },
+        { name: "nonce", type: "uint64" },
+      ],
+    };
+    value = {
+      ...action,
+      nonce,
+    };
+  }
 
   const signature = await signer.signTypedData(HYPERLIQUID_DOMAIN, types, value);
   const sig = ethers.Signature.from(signature);
