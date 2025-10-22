@@ -1,28 +1,37 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  walletAddress: string | null;
 };
 
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
+  // Accept wallet address from client header (for wallet-only auth)
+  const walletAddress = opts.req.headers['x-wallet-address'] as string | undefined || null;
 
-  try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
+  // Create a synthetic user from wallet address
+  let user: User | null = null;
+  if (walletAddress) {
+    user = {
+      id: walletAddress,
+      name: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      email: null,
+      loginMethod: 'wallet' as const,
+      role: 'user' as const,
+      createdAt: new Date(),
+      lastSignedIn: new Date(),
+    };
   }
 
   return {
     req: opts.req,
     res: opts.res,
     user,
+    walletAddress,
   };
 }

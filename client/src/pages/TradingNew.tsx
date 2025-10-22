@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getLoginUrl } from "@/const";
+// Removed Google OAuth - wallet-only auth now
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -54,7 +54,7 @@ export default function TradingNew() {
   } = useHyperliquidAccount({ refetchInterval: 5000 });
 
   const { data: userFills } = trpc.account.getUserFills.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: wallet.isConnected, // Only fetch if wallet is connected
   });
 
   // Client-side trading
@@ -121,21 +121,7 @@ export default function TradingNew() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-        <Card className="p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-4">Login Required</h1>
-          <p className="text-muted-foreground mb-6">
-            Please login to access the trading platform
-          </p>
-          <Button asChild className="w-full">
-            <a href={getLoginUrl()}>Login</a>
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  // No login required anymore - wallet connection is optional
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -204,8 +190,6 @@ export default function TradingNew() {
               )}
             </div>
           )}
-
-          <div className="text-sm text-muted-foreground">{user?.email}</div>
         </div>
       </header>
 
