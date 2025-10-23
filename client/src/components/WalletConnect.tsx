@@ -21,10 +21,29 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
 
   useEffect(() => {
     // Check if MetaMask is installed
-    setHasMetaMask(typeof window.ethereum !== 'undefined');
+    setHasMetaMask(typeof window.ethereum !== 'undefined' && Boolean(window.ethereum.isMetaMask));
 
     // Check localStorage for saved wallet address
     const savedAddress = localStorage.getItem('wallet_address');
+
+    // Event handlers stored for cleanup
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length > 0) {
+        const address = accounts[0];
+        setWalletAddress(address);
+        localStorage.setItem('wallet_address', address);
+        // Dispatch event for other components
+        window.dispatchEvent(new Event('walletChanged'));
+      } else {
+        setWalletAddress(null);
+        localStorage.removeItem('wallet_address');
+        window.dispatchEvent(new Event('walletChanged'));
+      }
+    };
+
+    const handleChainChanged = () => {
+      window.location.reload();
+    };
 
     // Check if already connected
     if (window.ethereum) {
@@ -40,33 +59,25 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
             setWalletAddress(null);
           }
         })
-        .catch(console.error);
+        .catch((error: any) => {
+          console.error('[WalletConnect] Failed to get accounts:', error);
+        });
 
       // Listen for account changes
-      window.ethereum.on('accountsChanged', (accounts: string[]) => {
-        if (accounts.length > 0) {
-          const address = accounts[0];
-          setWalletAddress(address);
-          localStorage.setItem('wallet_address', address);
-        } else {
-          setWalletAddress(null);
-          localStorage.removeItem('wallet_address');
-        }
-      });
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
 
       // Listen for chain changes
-      window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-      });
+      window.ethereum.on('chainChanged', handleChainChanged);
     } else if (savedAddress) {
       // If MetaMask not installed but wallet was saved, clear it
       localStorage.removeItem('wallet_address');
     }
 
+    // Cleanup function
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeAllListeners('accountsChanged');
-        window.ethereum.removeAllListeners('chainChanged');
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
       }
     };
   }, []);
@@ -83,6 +94,21 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
       return;
     }
 
+    // Check if MetaMask is locked
+    try {
+      if (window.ethereum._metamask?.isUnlocked) {
+        const isUnlocked = await window.ethereum._metamask.isUnlocked();
+        if (!isUnlocked) {
+          toast.error("MetaMask is locked", {
+            description: "Please unlock your MetaMask wallet",
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn("[WalletConnect] Could not check if MetaMask is locked:", error);
+    }
+
     setIsConnecting(true);
 
     try {
@@ -91,16 +117,31 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
         method: 'eth_requestAccounts',
       });
 
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found. Please check your MetaMask.");
+      }
+
       const address = accounts[0];
+
+      // Verify we got a valid address
+      if (!address || !address.startsWith('0x')) {
+        throw new Error("Invalid wallet address received");
+      }
 
       // Store wallet address in localStorage (client-side only, no server auth needed)
       localStorage.setItem('wallet_address', address);
       setWalletAddress(address);
 
-      toast.success("✅ Wallet connected successfully!");
+      // Dispatch event for other components
+      window.dispatchEvent(new Event('walletChanged'));
+
+      toast.success("✅ Wallet connected successfully!", {
+        description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
+      });
+      
       onConnected?.(address);
 
-      // Redirect to trading page
+      // Redirect to trading page after a short delay
       setTimeout(() => {
         window.location.href = '/trade';
       }, 500);
@@ -108,9 +149,18 @@ export function WalletConnect({ onConnected }: WalletConnectProps) {
     } catch (error: any) {
       console.error("[WalletConnect] Connection failed:", error);
 
+      // Handle specific error codes
       if (error.code === 4001) {
         toast.error("Connection rejected", {
           description: "You rejected the connection request",
+        });
+      } else if (error.code === -32002) {
+        toast.error("Request pending", {
+          description: "Please check MetaMask for pending requests",
+        });
+      } else if (error.code === -32603) {
+        toast.error("Internal error", {
+          description: "MetaMask encountered an internal error. Please try again.",
         });
       } else {
         toast.error("Connection Failed", {

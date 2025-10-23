@@ -173,8 +173,20 @@ export function EnhancedOrderForm({
     return margin.toFixed(2);
   };
 
+  // Check if trading is properly configured
+  const isTradingConfigured = import.meta.env.VITE_ENABLE_TRADING === 'true';
+  
   return (
     <Card className="h-full flex flex-col bg-black border-gray-800">
+      {/* Trading Warning if not configured */}
+      {!isTradingConfigured && (
+        <div className="bg-yellow-900/20 border border-yellow-600/30 p-2 m-2 rounded">
+          <p className="text-xs text-yellow-500">
+            ⚠️ Trading is in demo mode. Orders will not be executed.
+          </p>
+        </div>
+      )}
+      
       {/* Side Toggle - Buy/Sell */}
       <div className="grid grid-cols-2 gap-0 p-2">
         <button

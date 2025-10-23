@@ -42,13 +42,39 @@ export function useWallet() {
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
         setProvider(browserProvider);
 
-        // Clear any stored wallet address to ensure secure connection flow
-        localStorage.removeItem('wallet_address');
-
-        // Do NOT auto-connect - user must explicitly click "Connect Wallet"
-        // This ensures MetaMask prompts for permission every time
+        // Check if we have a saved wallet address and verify it's still connected
+        const savedAddress = localStorage.getItem('wallet_address');
+        if (savedAddress) {
+          try {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (accounts && accounts.length > 0 && accounts[0].toLowerCase() === savedAddress.toLowerCase()) {
+              // Wallet is still connected, restore the state
+              const signer = await browserProvider.getSigner();
+              const network = await browserProvider.getNetwork();
+              
+              setSigner(signer);
+              setWallet({
+                address: savedAddress,
+                chainId: Number(network.chainId),
+                isConnected: true,
+                isConnecting: false,
+                error: null,
+              });
+            } else {
+              // Wallet is no longer connected, clear saved address
+              localStorage.removeItem('wallet_address');
+            }
+          } catch (error) {
+            console.error("Error checking saved wallet:", error);
+            localStorage.removeItem('wallet_address');
+          }
+        }
       } catch (error) {
         console.error("Error initializing provider:", error);
+        setWallet((prev) => ({
+          ...prev,
+          error: "Failed to initialize wallet provider",
+        }));
       }
     };
 
@@ -119,12 +145,26 @@ export function useWallet() {
       if (!window.ethereum) {
         throw new Error("MetaMask not found");
       }
+      
       const browserProvider = new ethers.BrowserProvider(window.ethereum);
-      await browserProvider.send("eth_requestAccounts", []);
+      
+      // Request account access with proper error handling
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found. Please check your MetaMask.");
+      }
 
       const signer = await browserProvider.getSigner();
       const address = await signer.getAddress();
       const network = await browserProvider.getNetwork();
+
+      // Verify the address matches
+      if (address.toLowerCase() !== accounts[0].toLowerCase()) {
+        throw new Error("Address mismatch. Please try again.");
+      }
 
       setProvider(browserProvider);
       setSigner(signer);
@@ -139,13 +179,28 @@ export function useWallet() {
       // Save wallet address to localStorage for authentication
       localStorage.setItem('wallet_address', address);
       window.dispatchEvent(new Event('walletChanged'));
+      
+      return address; // Return address for success handling
     } catch (error: any) {
       console.error("Error connecting wallet:", error);
+      
+      // Handle specific error codes
+      let errorMessage = "Failed to connect wallet";
+      if (error.code === 4001) {
+        errorMessage = "Connection rejected by user";
+      } else if (error.code === -32002) {
+        errorMessage = "Request already pending. Check MetaMask.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setWallet((prev) => ({
         ...prev,
         isConnecting: false,
-        error: error.message || "Failed to connect wallet",
+        error: errorMessage,
       }));
+      
+      throw error; // Re-throw for caller to handle
     }
   }, [isMetaMaskInstalled]);
 
