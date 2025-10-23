@@ -24,7 +24,12 @@ export function useAuth(options?: UseAuthOptions) {
     checkWallet();
 
     // Listen for storage events (wallet connect/disconnect)
-    window.addEventListener('storage', checkWallet);
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'wallet_address') {
+        checkWallet();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
     // Also listen for custom event from wallet hook
     const handleWalletChange = () => {
@@ -32,8 +37,9 @@ export function useAuth(options?: UseAuthOptions) {
     };
     window.addEventListener('walletChanged', handleWalletChange);
 
+    // Proper cleanup to prevent memory leaks
     return () => {
-      window.removeEventListener('storage', checkWallet);
+      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('walletChanged', handleWalletChange);
     };
   }, []);

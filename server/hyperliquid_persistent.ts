@@ -172,13 +172,28 @@ class HyperliquidDaemon {
 
   async restart() {
     console.log("[Hyperliquid Daemon] Restarting...");
-    if (this.process) {
-      this.process.kill();
-      this.process = null;
-      this.rl = null;
+    try {
+      if (this.process) {
+        this.process.kill();
+        // Wait for process to fully exit
+        await new Promise((resolve) => {
+          if (this.process) {
+            this.process.once('exit', resolve);
+            setTimeout(resolve, 1000); // Timeout fallback
+          } else {
+            resolve(undefined);
+          }
+        });
+        this.process = null;
+        this.rl = null;
+      }
+      this.ready = false;
+      await this.start();
+      console.log("[Hyperliquid Daemon] Restarted successfully");
+    } catch (error) {
+      console.error("[Hyperliquid Daemon] Failed to restart:", error);
+      throw error;
     }
-    this.ready = false;
-    await this.start();
   }
 
   async request(command: string, args: any = {}) {

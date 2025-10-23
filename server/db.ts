@@ -27,25 +27,144 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
+let connectionAttempts = 0;
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 1000;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+// Helper to detect if running on Google Cloud Run
+function isCloudRun(): boolean {
+  return process.env.K_SERVICE !== undefined;
+}
+
+// Helper to get proper database config for Cloud SQL
+function getDatabaseConfig() {
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  // Parse the connection string
+  const isCloudSQL = databaseUrl.includes('/cloudsql/');
+  const isSupabase = databaseUrl.includes('supabase.co');
+  
+  // Base configuration
+  const config: any = {
+    connectionString: databaseUrl,
+    // Connection pool settings optimized for serverless
+    max: 25, // Maximum connections in pool
+    min: 1,  // Minimum connections
+    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+    connectionTimeoutMillis: 10000, // Connection timeout 10 seconds
+  };
+
+  // SSL configuration
+  if (isCloudSQL) {
+    // Cloud SQL uses Unix socket, no SSL needed when using proxy
+    console.log("[Database] Configuring for Cloud SQL with Unix socket");
+  } else if (isSupabase) {
+    config.ssl = { rejectUnauthorized: false };
+    console.log("[Database] Configuring for Supabase with SSL");
+  } else if (process.env.NODE_ENV === 'production') {
+    // Default production SSL settings
+    config.ssl = { rejectUnauthorized: true };
+    console.log("[Database] Configuring for production with SSL");
+  }
+
+  return config;
+}
+
+// Retry logic with exponential backoff
+async function connectWithRetry(): Promise<Pool | null> {
+  while (connectionAttempts < MAX_RETRY_ATTEMPTS) {
+    connectionAttempts++;
+    
+    try {
+      console.log(`[Database] Connection attempt ${connectionAttempts}/${MAX_RETRY_ATTEMPTS}...`);
+      
+      const config = getDatabaseConfig();
+      const pool = new Pool(config);
+      
+      // Test the connection
+      const client = await pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      
+      console.log("[Database] ✅ Successfully connected to database");
+      connectionAttempts = 0; // Reset counter on success
+      return pool;
+      
+    } catch (error) {
+      console.error(`[Database] Connection attempt ${connectionAttempts} failed:`, error);
+      
+      if (connectionAttempts >= MAX_RETRY_ATTEMPTS) {
+        console.error("[Database] ❌ Max retry attempts reached. Database connection failed.");
+        return null;
+      }
+      
+      // Exponential backoff
+      const delay = RETRY_DELAY_MS * Math.pow(2, connectionAttempts - 1);
+      console.log(`[Database] Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  return null;
+}
+
+// Lazily create the drizzle instance with retry logic
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_URL.includes('supabase.co')
-          ? { rejectUnauthorized: false }
-          : undefined,
-      });
-      _db = drizzle(_pool);
+      _pool = await connectWithRetry();
+      
+      if (_pool) {
+        _db = drizzle(_pool);
+        
+        // Set up connection error handling
+        _pool.on('error', (err) => {
+          console.error('[Database] Unexpected pool error:', err);
+          // Mark connection as needing reconnection
+          _db = null;
+        });
+      } else {
+        console.warn("[Database] Could not establish database connection after retries");
+      }
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Fatal error during connection:", error);
       _db = null;
     }
   }
   return _db;
 }
+
+// Cleanup function to close database connections gracefully
+export async function closeDb() {
+  if (_pool) {
+    try {
+      await _pool.end();
+      console.log("[Database] Connection pool closed successfully");
+    } catch (error) {
+      console.error("[Database] Error closing connection pool:", error);
+    } finally {
+      _pool = null;
+      _db = null;
+    }
+  }
+}
+
+// Register cleanup on process termination
+process.on('SIGINT', async () => {
+  console.log('[Database] Received SIGINT, closing connections...');
+  await closeDb();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('[Database] Received SIGTERM, closing connections...');
+  await closeDb();
+  process.exit(0);
+});
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.id) {

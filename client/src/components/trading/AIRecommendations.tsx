@@ -16,16 +16,8 @@ export function AIRecommendations({ userState, mids, selectedCoin }: AIRecommend
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getRecommendations = trpc.ai.getTradingRecommendations.useQuery(
-    {
-      userState,
-      mids: mids || {},
-      selectedCoin,
-    },
-    {
-      enabled: false, // Manual trigger only
-    }
-  );
+  // Use mutation instead of query to handle large payloads
+  const getRecommendations = trpc.ai.getTradingRecommendations.useMutation();
 
   const handleGetAnalysis = async () => {
     if (!userState || !mids) {
@@ -37,9 +29,14 @@ export function AIRecommendations({ userState, mids, selectedCoin }: AIRecommend
     setError(null);
 
     try {
-      const result = await getRecommendations.refetch();
-      if (result.data?.success) {
-        setAnalysis(result.data.analysis);
+      const result = await getRecommendations.mutateAsync({
+        userState,
+        mids: mids || {},
+        selectedCoin,
+      });
+      
+      if (result?.success) {
+        setAnalysis(result.analysis);
       } else {
         setError("Failed to generate analysis");
       }

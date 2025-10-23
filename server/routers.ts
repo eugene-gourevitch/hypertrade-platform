@@ -119,11 +119,12 @@ export const appRouter = router({
     }),
 
     getSettings: protectedProcedure.query(async ({ ctx }) => {
-      const settings = await db.getUserSettings(ctx.user.id);
-      return settings || {
-        userId: ctx.user.id,
-        defaultLeverage: "1",
-        defaultSlippage: "0.05",
+      try {
+        const settings = await db.getUserSettings(ctx.user.id);
+        return settings || {
+          userId: ctx.user.id,
+          defaultLeverage: "1",
+          defaultSlippage: "0.05",
         favoriteCoins: null,
         theme: "dark",
         telegramChatId: null,
@@ -134,6 +135,25 @@ export const appRouter = router({
         telegramPnLAlerts: true,
         updatedAt: null,
       };
+      } catch (error) {
+        console.error('[Account] Failed to get settings:', error);
+        // Return default settings as fallback
+        return {
+          userId: ctx.user.id,
+          defaultLeverage: "1",
+          defaultSlippage: "0.05",
+          favoriteCoins: null,
+          theme: "dark",
+          telegramChatId: null,
+          telegramAlertsEnabled: false,
+          telegramLiquidationAlerts: true,
+          telegramFillAlerts: true,
+          telegramPriceAlerts: false,
+          telegramPnLAlerts: true,
+          createdAt: new Date(),
+          updatedAt: null,
+        };
+      }
     }),
 
     updateSettings: protectedProcedure
@@ -163,13 +183,48 @@ export const appRouter = router({
     getTrades: protectedProcedure
       .input(z.object({ limit: z.number().default(100) }))
       .query(async ({ ctx, input }) => {
-        return await db.getUserTrades(ctx.user.id, input.limit);
+        try {
+          const trades = await db.getUserTrades(ctx.user.id, input.limit);
+          return trades || [];
+        } catch (error) {
+          console.error('[Account] Failed to get trades:', error);
+          // Return empty array as fallback
+          return [];
+        }
       }),
 
     getPerformanceMetrics: protectedProcedure.query(async ({ ctx }) => {
-      const trades = await db.getUserTrades(ctx.user.id, 1000);
-      const { calculatePerformanceMetrics } = await import('./performance_metrics');
-      return calculatePerformanceMetrics(trades);
+      try {
+        const trades = await db.getUserTrades(ctx.user.id, 1000);
+        if (!trades || trades.length === 0) {
+          // Return default metrics when no trades
+          return {
+            totalTrades: 0,
+            winRate: 0,
+            totalPnL: 0,
+            averagePnL: 0,
+            bestTrade: 0,
+            worstTrade: 0,
+            sharpeRatio: 0,
+            maxDrawdown: 0,
+          };
+        }
+        const { calculatePerformanceMetrics } = await import('./performance_metrics');
+        return calculatePerformanceMetrics(trades);
+      } catch (error) {
+        console.error('[Account] Failed to calculate performance metrics:', error);
+        // Return default metrics as fallback
+        return {
+          totalTrades: 0,
+          winRate: 0,
+          totalPnL: 0,
+          averagePnL: 0,
+          bestTrade: 0,
+          worstTrade: 0,
+          sharpeRatio: 0,
+          maxDrawdown: 0,
+        };
+      }
     }),
   }),
 

@@ -6,6 +6,7 @@ import { router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import * as db from "./db";
+import { safeParseFloat, safeDivide, safeToFixed } from "./_core/safeNumber";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || "",
@@ -14,16 +15,17 @@ const anthropic = new Anthropic({
 export const aiRouter = router({
   /**
    * Get AI-powered trading recommendations
+   * Using mutation to handle large payloads and avoid HTTP 431 errors
    */
   getTradingRecommendations: protectedProcedure
     .input(
       z.object({
         userState: z.any(),
-        mids: z.record(z.string(), z.string()),
+        mids: z.record(z.string()),
         selectedCoin: z.string(),
       })
     )
-    .query(async ({ input, ctx }) => {
+    .mutation(async ({ input, ctx }) => {
       if (!process.env.ANTHROPIC_API_KEY) {
         throw new Error("ANTHROPIC_API_KEY not configured");
       }
@@ -39,54 +41,61 @@ export const aiRouter = router({
       const totalMarginUsed = userState?.marginSummary?.totalMarginUsed || "0";
       const withdrawable = userState?.withdrawable || "0";
 
-      // Calculate metrics
-      const accountValueNum = parseFloat(accountValue);
-      const marginUsedNum = parseFloat(totalMarginUsed);
-      const withdrawableNum = parseFloat(withdrawable);
+      // Calculate metrics with safe parsing
+      const accountValueNum = safeParseFloat(accountValue, 0);
+      const marginUsedNum = safeParseFloat(totalMarginUsed, 0);
+      const withdrawableNum = safeParseFloat(withdrawable, 0);
 
+      // Safely calculate leverage and margin ratio
       const accountLeverage =
-        accountValueNum > 0 ? marginUsedNum / accountValueNum : 0;
+        accountValueNum > 0 && !isNaN(accountValueNum) 
+          ? marginUsedNum / accountValueNum 
+          : 0;
       const marginRatio =
-        accountValueNum > 0 ? (marginUsedNum / accountValueNum) * 100 : 0;
+        accountValueNum > 0 && !isNaN(accountValueNum) 
+          ? (marginUsedNum / accountValueNum) * 100 
+          : 0;
 
-      // Calculate total unrealized PNL
+      // Calculate total unrealized PNL with safe parsing
       const totalUnrealizedPnl = positions.reduce((sum: number, pos: any) => {
-        return sum + parseFloat(pos.position?.unrealizedPnl || "0");
+        return sum + safeParseFloat(pos.position?.unrealizedPnl, 0);
       }, 0);
 
       // Prepare position details
       const positionDetails = positions.map((pos: any) => {
         const position = pos.position;
         const coin = position.coin;
-        const size = parseFloat(position.szi || "0");
-        const entryPrice = parseFloat(position.entryPx || "0");
-        const currentPrice = parseFloat((mids[coin] || "0") as string);
-        const unrealizedPnl = parseFloat(position.unrealizedPnl || "0");
+        const size = safeParseFloat(position.szi, 0);
+        const entryPrice = safeParseFloat(position.entryPx, 0);
+        const currentPrice = safeParseFloat(mids[coin], 0);
+        const unrealizedPnl = safeParseFloat(position.unrealizedPnl, 0);
         const leverage = position.leverage?.value || 1;
-        const liquidationPx = parseFloat(position.liquidationPx || "0");
+        const liquidationPx = safeParseFloat(position.liquidationPx, 0);
 
-        // Calculate distance to liquidation
+        // Calculate distance to liquidation safely
         const distanceToLiq =
           currentPrice > 0 && liquidationPx > 0
             ? size > 0
-              ? ((currentPrice - liquidationPx) / currentPrice) * 100
-              : ((liquidationPx - currentPrice) / currentPrice) * 100
+              ? safeDivide((currentPrice - liquidationPx), currentPrice, 0) * 100
+              : safeDivide((liquidationPx - currentPrice), currentPrice, 0) * 100
             : 0;
+
+        // Calculate PNL percentage safely (avoid division by zero)
+        const positionValue = entryPrice * Math.abs(size);
+        const pnlPercentNum = safeDivide(unrealizedPnl, positionValue, 0) * 100;
+        const pnlPercent = safeToFixed(pnlPercentNum, 2);
 
         return {
           coin,
-          size: size.toFixed(4),
+          size: safeToFixed(size, 4),
           side: size > 0 ? "LONG" : "SHORT",
-          entryPrice: entryPrice.toFixed(2),
-          currentPrice: currentPrice.toFixed(2),
-          unrealizedPnl: unrealizedPnl.toFixed(2),
-          pnlPercent: (
-            ((unrealizedPnl / (entryPrice * Math.abs(size))) *
-              100)
-          ).toFixed(2),
+          entryPrice: safeToFixed(entryPrice, 2),
+          currentPrice: safeToFixed(currentPrice, 2),
+          unrealizedPnl: safeToFixed(unrealizedPnl, 2),
+          pnlPercent,
           leverage: leverage,
-          liquidationPrice: liquidationPx.toFixed(2),
-          distanceToLiquidation: distanceToLiq.toFixed(2) + "%",
+          liquidationPrice: safeToFixed(liquidationPx, 2),
+          distanceToLiquidation: safeToFixed(distanceToLiq, 2) + "%",
         };
       });
 
@@ -94,11 +103,11 @@ export const aiRouter = router({
       const prompt = `You are an expert crypto trading advisor analyzing a trader's Hyperliquid DEX positions. Provide professional risk management and P&L optimization advice.
 
 ## Account Overview
-- Total Account Value: $${accountValueNum.toFixed(2)}
-- Available Balance: $${withdrawableNum.toFixed(2)}
-- Margin Used: $${marginUsedNum.toFixed(2)} (${marginRatio.toFixed(2)}%)
-- Account Leverage: ${accountLeverage.toFixed(2)}x
-- Total Unrealized PNL: $${totalUnrealizedPnl.toFixed(2)}
+- Total Account Value: $${safeToFixed(accountValueNum, 2)}
+- Available Balance: $${safeToFixed(withdrawableNum, 2)}
+- Margin Used: $${safeToFixed(marginUsedNum, 2)} (${safeToFixed(marginRatio, 2)}%)
+- Account Leverage: ${safeToFixed(accountLeverage, 2)}x
+- Total Unrealized PNL: $${safeToFixed(totalUnrealizedPnl, 2)}
 
 ## Open Positions
 ${positionDetails.length > 0 ? positionDetails.map((p: any) => `
@@ -111,7 +120,7 @@ ${positionDetails.length > 0 ? positionDetails.map((p: any) => `
 
 ## Current Market Context
 Selected Coin: ${selectedCoin}
-Current Price: $${parseFloat((mids[selectedCoin] || "0") as string).toFixed(2)}
+Current Price: $${safeToFixed(safeParseFloat(mids[selectedCoin], 0), 2)}
 
 ## Analysis Required
 1. **Risk Assessment**: Evaluate liquidation risk for each position and overall portfolio risk
@@ -120,6 +129,7 @@ Current Price: $${parseFloat((mids[selectedCoin] || "0") as string).toFixed(2)}
 4. **P&L Management**: Suggest take-profit and stop-loss levels
 5. **Portfolio Balance**: Evaluate diversification and concentration risk
 6. **Actionable Recommendations**: Provide specific, actionable trading advice
+7. **Top Hyperliquid wallets**: Provide analysis of the top 50 wallets on Hyperliquid and their trading activity
 
 Please provide a structured analysis with:
 - 🔴 Critical Risks (if any)
@@ -157,9 +167,9 @@ Keep advice practical, specific, and actionable. Focus on risk management and ca
           selectedCoin,
           accountValue: accountValue.toString(),
           totalPositions: positions.length,
-          accountLeverage: accountLeverage.toFixed(2),
+          accountLeverage: safeToFixed(accountLeverage, 2),
           analysis,
-          tokensUsed: message.usage?.input_tokens + message.usage?.output_tokens || 0,
+          tokensUsed: (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0),
           model: "claude-4.5-sonnet-20251015",
           responseTime,
         });
@@ -179,7 +189,7 @@ Keep advice practical, specific, and actionable. Focus on risk management and ca
           selectedCoin,
           accountValue: accountValue.toString(),
           totalPositions: positions.length,
-          accountLeverage: accountLeverage.toFixed(2),
+          accountLeverage: safeToFixed(accountLeverage, 2),
           analysis: "",
           errorMessage: error.message,
           responseTime: Date.now() - startTime,

@@ -24,7 +24,14 @@ export class HyperliquidWebSocket extends EventEmitter {
   }
 
   private connect() {
-    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
+    // Use a lock pattern to prevent race conditions
+    if (this.isConnecting) {
+      console.log('[HyperWS] Connection already in progress, skipping...');
+      return;
+    }
+    
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('[HyperWS] Already connected, skipping...');
       return;
     }
 
@@ -134,6 +141,8 @@ export class HyperliquidWebSocket extends EventEmitter {
       this.ws = null;
     }
 
+    // Clear subscriptions to prevent memory leak on reconnection
+    this.subscriptions.clear();
     this.isConnecting = false;
   }
 

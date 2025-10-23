@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { hyperliquidWS } from "../hyperliquid_websocket";
 import { startLiquidationMonitor } from "../liquidation_monitor";
+import { logEnvironmentStatus } from "./validateEnv";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,6 +32,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Validate environment variables before starting
+  logEnvironmentStatus();
+  
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

@@ -1,0 +1,113 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: hypertrade
+  REGION: us-central1
+
+jobs:
+  setup-build-deploy:
+    name: Setup, Build, and Deploy
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Authenticate to Google Cloud using Workload Identity Federation
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Setup gcloud CLI
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Configure Docker to use gcloud as credential helper
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker
+
+      # Build and push Docker image
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA .
+          docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
+
+      # Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
+          # Check if Cloud SQL instance exists
+          INSTANCE_CONNECTION_NAME=$(gcloud sql instances describe hypertrade-db \
+            --format="value(connectionName)" 2>/dev/null || echo "")
+          
+          if [ -n "$INSTANCE_CONNECTION_NAME" ]; then
+            echo "Found Cloud SQL instance: $INSTANCE_CONNECTION_NAME"
+            CLOUDSQL_FLAG="--add-cloudsql-instances=$INSTANCE_CONNECTION_NAME"
+          else
+            echo "No Cloud SQL instance found"
+            CLOUDSQL_FLAG=""
+          fi
+          
+          gcloud run deploy $SERVICE_NAME \
+            --image gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
+            --platform managed \
+            --region $REGION \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 1Gi \
+            --cpu 2 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --timeout 300 \
+            $CLOUDSQL_FLAG \
+            --set-env-vars NODE_ENV=production \
+            --set-env-vars DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            --set-env-vars HYPERLIQUID_ACCOUNT_ADDRESS="${{ secrets.HYPERLIQUID_ACCOUNT_ADDRESS }}" \
+            --set-env-vars HYPERLIQUID_API_SECRET="${{ secrets.HYPERLIQUID_API_SECRET }}" \
+            --set-env-vars ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            --set-env-vars VITE_WALLETCONNECT_PROJECT_ID="${{ secrets.VITE_WALLETCONNECT_PROJECT_ID }}" \
+            --set-env-vars TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            --set-env-vars RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+
+      # Get service URL
+      - name: Get Service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+            --platform managed \
+            --region $REGION \
+            --format 'value(status.url)')
+          echo "Service deployed to: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
+        id: deploy
+
+      # Run database migrations (if DATABASE_URL is set)
+      - name: Run Database Migrations
+        if: ${{ secrets.DATABASE_URL != '' }}
+        run: |
+          # Install dependencies
+          npm ci
+          
+          # Run migrations
+          DATABASE_URL="${{ secrets.DATABASE_URL }}" npm run db:push
+        continue-on-error: true
+
+      # Output deployment info
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment Complete!"
+          echo "🌐 Service URL: ${{ steps.deploy.outputs.SERVICE_URL }}"
+          echo "📦 Image: gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA"
+          echo "🚀 Region: $REGION"
