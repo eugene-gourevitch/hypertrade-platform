@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { useHyperliquid } from "@/hooks/useHyperliquid";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Settings2 } from "lucide-react";
 
@@ -49,10 +49,11 @@ export function EnhancedOrderForm({
     }
   }, [orderTab, currentPrice, limitPrice]);
 
-  // Use client-side Hyperliquid hook (signs with MetaMask)
-  const hyperliquid = useHyperliquid();
+  // Use server-side trading endpoints (configured with credentials)
+  const placeMarketOrder = trpc.trading.placeMarketOrder.useMutation();
+  const placeLimitOrder = trpc.trading.placeLimitOrder.useMutation();
 
-  // Handle order submission (client-side signing)
+  // Handle order submission (server-side execution)
   const handleSubmit = async () => {
     const sizeNum = parseFloat(size);
 
@@ -63,12 +64,13 @@ export function EnhancedOrderForm({
 
     try {
       if (orderTab === "market") {
-        await hyperliquid.placeMarketOrder({
+        await placeMarketOrder.mutateAsync({
           coin,
           isBuy: side === "buy",
           size: sizeNum,
           slippage: 0.5, // 0.5% slippage
         });
+        toast.success(`Market ${side} order placed`);
         setSize("");
         onOrderPlaced?.();
       } else if (orderTab === "limit") {
@@ -78,14 +80,14 @@ export function EnhancedOrderForm({
           return;
         }
 
-        await hyperliquid.placeOrder({
+        await placeLimitOrder.mutateAsync({
           coin,
           isBuy: side === "buy",
           size: sizeNum,
-          limitPrice: priceNum,
+          price: priceNum,
           reduceOnly,
-          tif: postOnly ? "Alo" : timeInForce === "GTC" ? "Gtc" : "Ioc",
         });
+        toast.success(`Limit ${side} order placed`);
         setSize("");
         setLimitPrice("");
         onOrderPlaced?.();
@@ -173,20 +175,8 @@ export function EnhancedOrderForm({
     return margin.toFixed(2);
   };
 
-  // Check if trading is properly configured
-  const isTradingConfigured = import.meta.env.VITE_ENABLE_TRADING === 'true';
-  
   return (
     <Card className="h-full flex flex-col bg-black border-gray-800">
-      {/* Trading Warning if not configured */}
-      {!isTradingConfigured && (
-        <div className="bg-yellow-900/20 border border-yellow-600/30 p-2 m-2 rounded">
-          <p className="text-xs text-yellow-500">
-            ⚠️ Trading is in demo mode. Orders will not be executed.
-          </p>
-        </div>
-      )}
-      
       {/* Side Toggle - Buy/Sell */}
       <div className="grid grid-cols-2 gap-0 p-2">
         <button

@@ -273,30 +273,51 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const result = await hyperliquid.placeMarketOrder(
-          input.coin,
-          input.isBuy,
-          input.size,
-          input.slippage
-        );
+        try {
+          // Try persistent daemon first (uses configured credentials)
+          const result = await hyperliquidPersistent.placeOrder({
+            coin: input.coin,
+            isBuy: input.isBuy,
+            size: input.size,
+            orderType: "market",
+            slippage: input.slippage
+          });
 
-        // Save trade to database
-        const tradeId = randomBytes(16).toString("hex");
-        await db.saveTrade({
-          id: tradeId,
-          userId: ctx.user.id,
-          coin: input.coin,
-          side: input.isBuy ? "buy" : "sell",
-          size: input.size.toString(),
-          price: "0",
-          orderType: "market",
-          status: result.status,
-          oid: result.response?.data?.statuses?.[0]?.resting?.oid?.toString(),
-          filledSize: result.response?.data?.statuses?.[0]?.filled?.totalSz,
-          avgFillPrice: result.response?.data?.statuses?.[0]?.filled?.avgPx,
-        });
+          // Save trade to database
+          const tradeId = randomBytes(16).toString("hex");
+          await db.saveTrade({
+            id: tradeId,
+            userId: ctx.user.id,
+            coin: input.coin,
+            side: input.isBuy ? "buy" : "sell",
+            size: input.size.toString(),
+            price: "0",
+            orderType: "market",
+            status: result.status || "submitted",
+            oid: result.response?.data?.statuses?.[0]?.resting?.oid?.toString(),
+            filledSize: result.response?.data?.statuses?.[0]?.filled?.totalSz,
+            avgFillPrice: result.response?.data?.statuses?.[0]?.filled?.avgPx,
+          });
 
-        return result;
+          return result;
+        } catch (error: any) {
+          console.error('[Trading] Market order failed:', error);
+          
+          // Try fallback to legacy implementation
+          try {
+            const result = await hyperliquid.placeMarketOrder(
+              input.coin,
+              input.isBuy,
+              input.size,
+              input.slippage
+            );
+            
+            return result;
+          } catch (fallbackError) {
+            console.error('[Trading] Fallback also failed:', fallbackError);
+            throw new Error('Trading service temporarily unavailable. Please try again.');
+          }
+        }
       }),
 
     placeLimitOrder: protectedProcedure
@@ -310,31 +331,53 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const result = await hyperliquid.placeLimitOrder(
-          input.coin,
-          input.isBuy,
-          input.size,
-          input.price,
-          input.reduceOnly
-        );
+        try {
+          // Try persistent daemon first (uses configured credentials)
+          const result = await hyperliquidPersistent.placeOrder({
+            coin: input.coin,
+            isBuy: input.isBuy,
+            size: input.size,
+            orderType: "limit",
+            limitPrice: input.price,
+            reduceOnly: input.reduceOnly
+          });
 
-        // Save trade to database
-        const tradeId = randomBytes(16).toString("hex");
-        await db.saveTrade({
-          id: tradeId,
-          userId: ctx.user.id,
-          coin: input.coin,
-          side: input.isBuy ? "buy" : "sell",
-          size: input.size.toString(),
-          price: input.price.toString(),
-          orderType: "limit",
-          status: result.status,
-          oid: result.response?.data?.statuses?.[0]?.resting?.oid?.toString(),
-          filledSize: result.response?.data?.statuses?.[0]?.filled?.totalSz,
-          avgFillPrice: result.response?.data?.statuses?.[0]?.filled?.avgPx,
-        });
+          // Save trade to database
+          const tradeId = randomBytes(16).toString("hex");
+          await db.saveTrade({
+            id: tradeId,
+            userId: ctx.user.id,
+            coin: input.coin,
+            side: input.isBuy ? "buy" : "sell",
+            size: input.size.toString(),
+            price: input.price.toString(),
+            orderType: "limit",
+            status: result.status || "submitted",
+            oid: result.response?.data?.statuses?.[0]?.resting?.oid?.toString(),
+            filledSize: result.response?.data?.statuses?.[0]?.filled?.totalSz,
+            avgFillPrice: result.response?.data?.statuses?.[0]?.filled?.avgPx,
+          });
 
-        return result;
+          return result;
+        } catch (error: any) {
+          console.error('[Trading] Limit order failed:', error);
+          
+          // Try fallback to legacy implementation
+          try {
+            const result = await hyperliquid.placeLimitOrder(
+              input.coin,
+              input.isBuy,
+              input.size,
+              input.price,
+              input.reduceOnly
+            );
+            
+            return result;
+          } catch (fallbackError) {
+            console.error('[Trading] Fallback also failed:', fallbackError);
+            throw new Error('Trading service temporarily unavailable. Please try again.');
+          }
+        }
       }),
 
     cancelOrder: protectedProcedure
