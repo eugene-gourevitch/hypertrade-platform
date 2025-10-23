@@ -42,27 +42,11 @@ export function useWallet() {
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
         setProvider(browserProvider);
 
-        // Check if already connected
-        const accounts = await browserProvider.listAccounts();
-        if (accounts.length > 0) {
-          const signer = await browserProvider.getSigner();
-          const address = await signer.getAddress();
-          const network = await browserProvider.getNetwork();
+        // Clear any stored wallet address to ensure secure connection flow
+        localStorage.removeItem('wallet_address');
 
-          setSigner(signer);
-          setWallet({
-            address,
-            chainId: Number(network.chainId),
-            isConnected: true,
-            isConnecting: false,
-            error: null,
-          });
-
-          // Save wallet address to localStorage for authentication
-          localStorage.setItem('wallet_address', address);
-          // Notify auth hook of wallet connection
-          window.dispatchEvent(new Event('walletChanged'));
-        }
+        // Do NOT auto-connect - user must explicitly click "Connect Wallet"
+        // This ensures MetaMask prompts for permission every time
       } catch (error) {
         console.error("Error initializing provider:", error);
       }
