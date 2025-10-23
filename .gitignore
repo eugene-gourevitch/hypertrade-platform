@@ -111,3 +111,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Claude Code local settings (contains API keys)
+.claude/settings.local.json
